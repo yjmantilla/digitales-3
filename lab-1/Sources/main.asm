@@ -17,7 +17,7 @@ MASK            EQU %00111111
 ; $ es hexadecimal
 ; PAGINA ZERO ES PREFERENCIAL RAPIDA
 ; estas variables se guardan en secuencia desde el origen de la ram
-                ORG    Z_RAMStart
+                ORG    Z_RAMStart ;$00B0
 Contador1:        DS.B   1           ; Contador
 Contador2:        DS.B   1 			; DS.B es un byte
 Contador3:        DS.B   1
@@ -28,15 +28,33 @@ Num_Estudiantes:  DS.B   1
 ; NO TAN RAPIDA COMO LA PAGINA ZERO
             ORG    RAMStart ;$0100
 
-; Sección de código del programa. 
-		ORG   ROMStart ; ROM ES MEMORIA SOLO DE LECTURA $1960
+; Sección de código del programa.
+; ROM ES MEMORIA SOLO DE LECTURA 
+		ORG   ROMStart ;  $1960
  _Startup:
+ 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		; Apagar WatchDOG
-		LDA   #$20
-		STA   SOPT1
+		LDA   #$20 ; LOAD ACCUM with $20, el porque lo explica en clase
+		STA   SOPT1 ; STORE A en la direccion SOPT1
+		;SOPT1 es $1802
 		; Llevar el SP a la última posición de la RAM
+		
+		;Estas dos instrucciones previas es para inhabilitar el watchdog 
+		; --> perro guardian, monitoreo?
+		;un micro trabaja continuamente, ciclo infinito, for infinito
+		;el watchdog reinicia en caso de bloqueos
+		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+		
+		
+		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+		; MANEJO DEL STACK
 		LDHX #RAMEnd+1
 		TXS 		; Limpiar Registros
+		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+		
+		
+		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+		; INicializacion limpia
 		CLRA
 		CLRX
 		CLRH
@@ -45,7 +63,16 @@ Num_Estudiantes:  DS.B   1
 		CLR Contador3
 		CLR Contador4
 		CLR Num_Estudiantes
-		MOV #20, Num_Estudiantes
+		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+		
+		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+		;;; Carga de variables con valores reales;
+		MOV #20, Num_Estudiantes ; trabajamos con 20 estudiantes
+		;;; comenzamos con el tope y quitamos hasta llegar a 0
+		
+		;;;;; inicializacion de puertos
+		;;; Poner en 0s los datos
+		;;; colocar en entrada y salida los bits de los puertos de acuerdo al caso
 		MOV #$00,PTAD
 		MOV #$FF,PTADD
 		MOV #$00,PTBD
@@ -54,6 +81,7 @@ Num_Estudiantes:  DS.B   1
 		MOV #$FF, PTCDD
 		MOV #$00,PTDD
 		MOV #$FF, PTDDD
+		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Cuerpo del programa
 Inicio: ;
 
