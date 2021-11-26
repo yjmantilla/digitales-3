@@ -85,7 +85,8 @@ Num_Estudiantes:  DS.B   1
 ; Cuerpo del programa
 Inicio: ;
 
-again:      LDA    Tabla,X        ; Cargo el valor  
+again:      LDA    Tabla,X        ; Cargo el valor 
+			; X tiene como el estudiante por donde va (creo), el indice
             CMP    #64 
             BLO    Count1   ;branch if lower, for unsigned numb.
             CMP    #128
@@ -126,11 +127,14 @@ Final:      INCX
 Here:       BRA  Here
 
 ; los bits 7 y 6, identifican el programa del estudiante  
-Tabla:      DC.B   %10011101    ; Est. De Ing. de Telecomunic.score 29
-            DC.B   %01100011    ; Est. De Ing. Eléctrica
-            DC.B   %10110000    
+; Resto de bits es para las  notas
+; Maximo puntaje es 50, pero el limite de la variable es 63 para esos 6 bits restantes
+;;; Guardamos notas de estudiantes
+Tabla:      DC.B   %10011101    ; Est. De Ing. de Telecomunic 10 , .score 29, TABLA +0 
+            DC.B   %01100011    ; Est. De Ing. Eléctrica 01 , TABLA +1
+            DC.B   %10110000    ; TABLA +2
             DC.B   %01110010    
-            DC.B   %00101101    ; Est. De Ing. Electrónica
+            DC.B   %00101101    ; Est. De Ing. Electrónica 00 
             DC.B   %00101100    
             DC.B   %00100101    
             DC.B   %10101000    
@@ -140,7 +144,7 @@ Tabla:      DC.B   %10011101    ; Est. De Ing. de Telecomunic.score 29
             DC.B   %00110000    
             DC.B   %10001111    
             DC.B   %10011001    
-            DC.B   %11011110  ; estudiante de Ing. Civil
+            DC.B   %11011110  ; estudiante de Ing. Civil 11 
             DC.B   %11011101
             DC.B   %00101101    
             DC.B   %01110000    
