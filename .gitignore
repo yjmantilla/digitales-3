@@ -1,0 +1,9 @@
+.metadata/
+RemoteLaunch/
+RemoteSystemsTempFiles/
+.settings
+.cproject
+.cwGeneratedFileSetLog
+.project
+Project_Settings/
+ReferencedRSESystems.xml
