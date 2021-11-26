@@ -85,12 +85,13 @@ Num_Estudiantes:  DS.B   1
 ; Cuerpo del programa
 Inicio: ;
 
-again:      LDA    Tabla,X        ; Cargo el valor 
+again:      LDA    Tabla,X        ; Cargo el primer valor 
 			; X tiene como el estudiante por donde va (creo), el indice
-            CMP    #64 
+            CMP    #64 ; comparamos con 64 para ver si es de electronica
+            ; saltamos si menor que
             BLO    Count1   ;branch if lower, for unsigned numb.
-            CMP    #128
-            BLO    Siga_2
+            CMP    #128  ; ELECTRICA
+            BLO    Siga_2 ; BRANCH de electrica
             CMP    #192
             BLO    Siga_3
             AND    #MASK
@@ -98,14 +99,14 @@ again:      LDA    Tabla,X        ; Cargo el valor
             BLO    Siga_4
             BRA    Final
             
-Count1:     CMP #45
-            BNE Siga_1
+Count1:     CMP #45 ; contador de estudiantes con puntaje igual a 45
+            BNE Siga_1 ; si es igual va a sIGa1, salto condicionado
             INC Contador1
-Siga_1:     BRA Final
+Siga_1:     BRA Final ; salto sin condicion
 
-Siga_2:     AND #MASK 
+Siga_2:     AND #MASK ; enmascarar para quedarse con la nota real de 6 bits
             CMP #35
-            BHS Count2
+            BHS Count2 ; higher or same
             BRA Final
 Count2:     INC Contador2
             BRA Final
@@ -117,9 +118,10 @@ Siga_3:     AND #MASK
             INC Contador3
             Bra Final      
 Siga_4:     INC Contador4
-Final:      INCX
-            DBNZ Num_Estudiantes ,again
-                   
+Final:      INCX ; pasa al siguiente estudiante
+            DBNZ Num_Estudiantes ,again ; decrementa y verifica si ha llegado a cero para terminar, sino again
+			
+			; LLega aqui solo cuando termina la lista de estudiantes para mostrar los resultados                   
             MOV Contador1, $00
             MOV Contador2, $02
             MOV Contador3, $04
