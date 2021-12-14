@@ -62,10 +62,30 @@ _Startup:
 	CLR Warning
 	
 	; Below is only for development purposes
-	MOV #127,OperandA
-	MOV #127,OperandB
-	MOV #2,Operator
-	
+	MOV #3,OperandA
+	MOV #-4,OperandB
+	MOV #3,Operator
+
+	; Tests
+
+	; Sum
+	; 127+1 -> Warning
+
+	; Substraction
+	; Need to do more
+
+	; Multiplication
+	; 127x127 -> Warning
+	; Need to do more
+	; Note -128 as result should be valid but in current implementation it is not
+
+	; Division
+	; 127 / 0 -> Warning
+	; 8 / 4 -> 2
+	; 8 / 3 -> 2 (Rem 2)
+	; 8 / -3 -> -2
+	; 3 / 4 -> 0
+	; 3 / -4 -> 0
 	
 	
 ; ******** Initializing In ports ******************************
@@ -122,99 +142,6 @@ capture_wait:
 	;End of program body
 
 ;************	SUBRUTINES OR FUNCTIONS		**********************************
-start:
-	; mask Operator to the LSBs
-	LDA Operator
-	AND #MASK_OP
-	BRA choose_action
-
-choose_action:
-	; Context: at this point acumulator is the operation
-	; Logic: Decrement Accumulator to know which op it is
-	ADD #0 ; Just so that we assure CCRs are updated
-	BEQ _sum ; If A=0 => A-0=0
-	DECA
-	BEQ _sub ; If A=1 => A-1=0
-	DECA
-	BEQ _mul ; If A=2 => A-2=0
-	DECA
-	BEQ _div ; If A=3 => A-3=0
-	BRA capture_wait
-
-_sum:
-	; A+B
-	LDA OperandB
-	ADD OperandA
-	; Check no-overflow
-	BRA show_result
-_sub:
-	; Does A - B by default
-	; So we need to negate B
-	NEG OperandB
-	BRA _sum ; Continue with algebraic Sum with signed integers
-_mul:
-	; Notice MUL is only capable of doing unsigned multiplication
-	JSR _get_sign_magnitude
-	MOV #0,Warning ; Assume there wont be a problem by default
-	LDA OperandA
-	LDX OperandB
-	MUL
-	STA Result
-	; If (X:A[7]) != 0x0000:0b0, then result of the multiplication 
-	; cannot be represented with 8bit signed integer
-	; somehow we need to check for this and feedback to the user
-	; truncante to A[0:7) ?
-	TXA ; If X is 0, we dont suspect there is a problem yet
-	ADD #0 ; Force CCR update (TXA does not do it)
-	BEQ no_mul_problem1
-	MOV #1,Warning
-no_mul_problem1:
-	; Now check the MSB of A, needs to be zero for no problem, that is, needs to be a "positive"
-	; NOTE: This logic misses the correct case of the multiplication being -128
-	LDA Result
-	BPL no_mul_problem2
-	MOV #1,Warning
-no_mul_problem2:
-	;Everything seems fine
-
-	; Get sign of the multiplication with exclusive or
-	LDA SignA
-	EOR SignB ; If Z=0-> Different Signs, If Z=1-> Same Signs
-	BEQ mul_is_pos
-	NEG Result
-mul_is_pos:
-	LDA Result
-	BRA show_result
-_div:
-	nop
-	BRA show_result
-_get_sign_magnitude:
-	; Subroutine
-	; Modifies A,SignA,SignB,CCR
-	; puts the Signs of A,B in SignA,SignB respectively
-	; and makes OperandA,OperandB their absolute value
-
-	; Assume both positive by default
-	; Only changed if proven otherwise
-	MOV #0,SignA
-	MOV #0,SignA
-
-	LDA OperandA
-	BPL _a_is_positive
-	NEG OperandA
-	MOV #1,SignA
-_a_is_positive:
-	LDA OperandB
-	BPL _b_is_positive
-	NEG OperandB
-	MOV #1,SignB
-_b_is_positive:
-	RTS
-show_result:
-	STA Result
-	BRA capture_wait
-
-
 ; It matters if the subrutine is far from whoever calls it, i had to put start nearer capture_wait
 ; or you may use JMP?
 
@@ -246,6 +173,132 @@ capture_op:
 	MOV PTCD,Operator
 	JMP capture_wait
 
+start:
+	; mask Operator to the LSBs
+	LDA Operator
+	AND #MASK_OP
+	BRA choose_action
+
+choose_action:
+	; Context: at this point acumulator is the operation
+	; Logic: Decrement Accumulator to know which op it is
+	ADD #0 ; Just so that we assure CCRs are updated
+	BEQ _sum ; If A=0 => A-0=0
+	DECA
+	BEQ _sub ; If A=1 => A-1=0
+	DECA
+	BEQ _mul ; If A=2 => A-2=0
+	DECA
+	BEQ _div ; If A=3 => A-3=0
+	BRA capture_wait
+
+show_result:
+	STA Result
+	BRA capture_wait
+
+_sum:
+	MOV #0,Warning ; Assume there wont be a problem by default
+	; A+B
+	LDA OperandB
+	ADD OperandA
+	TAX ; Temporally save Result (A) in X with TAX so that CCR does not change
+
+	; Check no-overflow
+	TPA
+	; We must now check bit 7 (V), if A is negative means it is ON
+	ADD #0
+	BPL no_problem_sum
+	MOV #1,Warning ; There was overflow
+no_problem_sum:
+	TXA
+	JMP show_result
+_sub:
+	; Does A - B by default
+	; So we need to negate B
+	NEG OperandB
+	BRA _sum ; Continue with algebraic Sum with signed integers
+_mul:
+	; Notice MUL is only capable of doing unsigned multiplication
+	JSR _get_sign_magnitude
+	MOV #0,Warning ; Assume there wont be a problem by default
+	LDA OperandA
+	LDX OperandB
+	MUL
+	STA Result
+	; If (X:A[7]) != 0x0000:0b0, then result of the multiplication 
+	; cannot be represented with 8bit signed integer
+	; somehow we need to check for this and feedback to the user
+	; truncante to A[0:7) ?
+	TXA ; If X is 0, we dont suspect there is a problem yet
+	ADD #0 ; Force CCR update (TXA does not do it)
+	BEQ no_mul_problem1
+	MOV #1,Warning
+no_mul_problem1:
+	; Now check the MSB of A, needs to be zero for no problem, that is, needs to be a "positive"
+	; NOTE: This logic misses the correct case of the multiplication being -128
+	LDA Result
+	BPL no_mul_problem2
+	MOV #1,Warning
+no_mul_problem2:
+	;Everything seems fine
+get_muldiv_sign:
+	; Get sign of the multiplication/division with exclusive or
+	; Assumes SignA SignB Set
+	; Asummes output in Result
+	LDA SignA
+	EOR SignB ; If Z=0-> Different Signs, If Z=1-> Same Signs
+	BEQ muldiv_is_pos
+	NEG Result
+muldiv_is_pos:
+	LDA Result
+	JMP show_result
+_div:
+	; Notice DIV is only capable of doing unsigned division
+	; A / B
+	; Divide, A <-- (H:A) /�(X); H <- Remainder
+	MOV #0,Warning ; Assume there wont be a problem by default
+
+	JSR _get_sign_magnitude
+
+	; Check B is not 0
+	LDA OperandB
+	BEQ division_by_zero
+
+	; What happens if A < B, does div handles it gracefully?
+	LDA OperandA
+	LDHX #0 ; Clear H
+	LDX OperandB
+	DIV
+	STA Result
+	JMP get_muldiv_sign
+division_by_zero:
+	AND #0 ; Clear A
+	MOV #1,Warning ; Have special led for zero division?
+	JMP show_result
+
+
+_get_sign_magnitude:
+	; Subroutine
+	; Modifies A,SignA,SignB,CCR
+	; puts the Signs of A,B in SignA,SignB respectively
+	; and makes OperandA,OperandB their absolute value
+
+	; Assume both positive by default
+	; Only changed if proven otherwise
+	MOV #0,SignA
+	MOV #0,SignA
+
+	LDA OperandA
+	BPL _a_is_positive
+	NEG OperandA
+	MOV #1,SignA
+_a_is_positive:
+	LDA OperandB
+	BPL _b_is_positive
+	NEG OperandB
+	MOV #1,SignB
+_b_is_positive:
+	RTS
 
 	ORG $FFFE
 	DC.W _Startup ; Reset
