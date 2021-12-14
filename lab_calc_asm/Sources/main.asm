@@ -22,6 +22,7 @@ Result:  			DS.B	1
 Operator:			DS.B	1
 SignA:				DS.B	1
 SignB:				DS.B	1
+SignResult:			DS.B	1
 Warning:			DS.B	1
 ;*************************************************************************************************
 ;
@@ -60,24 +61,29 @@ _Startup:
 	CLR SignA
 	CLR SignB
 	CLR Warning
+	CLR SignResult
 	
 	; Below is only for development purposes
-	MOV #3,OperandA
-	MOV #-4,OperandB
+	MOV #-128,OperandA
+	MOV #1,OperandB
 	MOV #3,Operator
 
 	; Tests
 
 	; Sum
 	; 127+1 -> Warning
+	; 10 + (-2) --> 8
 
 	; Substraction
 	; Need to do more
+	; 10 - (-2) --> 12
 
 	; Multiplication
 	; 127x127 -> Warning
-	; Need to do more
-	; Note -128 as result should be valid but in current implementation it is not
+	; 64x-2 --> -128, no Warning
+	; 64x2 --> -128, Warning
+	; 64x0 --> 0
+	; -64x0 --> 0
 
 	; Division
 	; 127 / 0 -> Warning
@@ -86,6 +92,8 @@ _Startup:
 	; 8 / -3 -> -2
 	; 3 / 4 -> 0
 	; 3 / -4 -> 0
+	; -128 / -1 -> -128, Warning
+	; -128 / 1 -> -128
 	
 	
 ; ******** Initializing In ports ******************************
@@ -231,26 +239,42 @@ _mul:
 	; truncante to A[0:7) ?
 	TXA ; If X is 0, we dont suspect there is a problem yet
 	ADD #0 ; Force CCR update (TXA does not do it)
-	BEQ no_mul_problem1
+	BEQ check_sign
 	MOV #1,Warning
-no_mul_problem1:
+check_sign:
 	; Now check the MSB of A, needs to be zero for no problem, that is, needs to be a "positive"
 	; NOTE: This logic misses the correct case of the multiplication being -128
 	; we could just check that the result is not the special case of -128
 	LDA Result
-	BPL no_mul_problem2
-	MOV #1,Warning
-no_mul_problem2:
-	;Everything seems fine
+	BPL get_muldiv_sign
+	MOV #1,Warning ; By this point u128 will give warning
 get_muldiv_sign:
+	; Assumes Result has the unsigned result
+
 	; Get sign of the multiplication/division with exclusive or
 	; Assumes SignA SignB Set
 	; Asummes output in Result
 	LDA SignA
 	EOR SignB ; If Z=0-> Different Signs, If Z=1-> Same Signs
+	STA SignResult
+	ADD #0
 	BEQ muldiv_is_pos
-	NEG Result
+	NEG Result ; notice NEG(-128)-->(-128)
 muldiv_is_pos:
+	; Handle 128 Case
+	; Check if Result is u128 and ResultSign is Negative (representable) 
+	; Here we need to overwite de Warning flagged on before
+	LDA Result
+	ADD #-128 ; u128 + (-)128=0
+	BNE not_128
+	; Confirmed 128
+	; Check Sign, Overwite Warning Only if ResultSign = 1 (negative)
+	LDA SignResult
+	BEQ not_128 ; If Sign is Positive (A=0)--> +128--> Unrepresentable --> Keep the Warning of Before
+	; Here, sign is negative.
+	; Overwrite Warning
+	MOV #0,Warning
+not_128:
 	LDA Result
 	JMP show_result
 _div:
@@ -271,7 +295,7 @@ _div:
 	LDX OperandB
 	DIV
 	STA Result
-	JMP get_muldiv_sign
+	JMP check_sign
 division_by_zero:
 	AND #0 ; Clear A
 	MOV #1,Warning ; Have special led for zero division?
@@ -287,7 +311,7 @@ _get_sign_magnitude:
 	; Assume both positive by default
 	; Only changed if proven otherwise
 	MOV #0,SignA
-	MOV #0,SignA
+	MOV #0,SignB
 
 	LDA OperandA
 	BPL _a_is_positive
