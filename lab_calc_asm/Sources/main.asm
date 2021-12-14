@@ -256,7 +256,7 @@ muldiv_is_pos:
 _div:
 	; Notice DIV is only capable of doing unsigned division
 	; A / B
-	; Divide, A <-- (H:A) /�(X); H <- Remainder
+	; Divide, A <-- (H:A) / (X); H <- Remainder
 	MOV #0,Warning ; Assume there wont be a problem by default
 
 	JSR _get_sign_magnitude
