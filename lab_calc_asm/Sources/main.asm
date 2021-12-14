@@ -1,34 +1,39 @@
 ; Include derivative-specific definitions
 	INCLUDE 'derivative.inc'
 
-;
-; export symbols
-;
+; Export Symbols
 	XDEF _Startup
 	ABSENTRY _Startup
 
-;*************************************************************************************************
+; Constants (ALLCAPS)
+MASK_OP: EQU %00000011
+MASK_BUTTON: EQU %00001111
 
-	ORG Z_RAMStart ; Put the origin of the next declared variables at Z RAM START
+;*************************************************************************************************
+	ORG Z_RAMStart
+; Put the origin of the next declared variables at Z RAM START
 ; These variables will be accesed faster because they are in page zero 
 
-;**********		VARIABLES		**********
-
-OperantA:			DS.B	1
-OperantB:			DS.B	1
+; FAST VARIABLES
+; PascalCase
+OperandA:			DS.B	1
+OperandB:			DS.B	1
 Result:  			DS.B	1
-Operant:			DS.B	1
-
+Operator:			DS.B	1
+SignA:				DS.B	1
+SignB:				DS.B	1
+Warning:			DS.B	1
 ;*************************************************************************************************
 ;
 ; variable/data section
-;
+; SLOW VARS
+
 	ORG RAMStart 
-	; These variables will be accessed slower, as they are in RAM but not in page zero
+; These variables will be accessed slower, as they are in RAM but not in page zero
 
 ExampleVar: DS.B   1
 
-;
+
 ; code section
 
 ;*********************************************************************************************
@@ -48,56 +53,199 @@ _Startup:
 	CLRA
 	CLRX
 	CLRH
-	CLR OperantA
-	CLR OperantB
+	CLR OperandA
+	CLR OperandB
+	CLR Operator
+	CLR Result
+	CLR SignA
+	CLR SignB
+	CLR Warning
+	
+	; Below is only for development purposes
+	MOV #127,OperandA
+	MOV #127,OperandB
+	MOV #2,Operator
 	
 	
 	
 ; ******** Initializing In ports ******************************
+	; It is recommended to load the data of the ports before configuring them
+	; PTA will be for buttons	
+	; PTA : [X,X,X,X,Start,Op,B,A]
 
-	MOV #$FF, PTAD	; 
-	MOV #$00, PTADD ; Puertos de los swiches
+	MOV #$FF, PTAD  ; safe load
+	MOV #$00, PTADD ; PTA as INPUT (all lines)
+	; Notice that we wont need bit 7 and 6 of PTA, so no problem...
 	
-	MOV #$00, PTBD
-	MOV #$00, PTBDD ; Puerto del bus
+	; PTB will be for data
+	; PTB has no deactivated bits
+	MOV #$00, PTBD  ; safe load
+	MOV #$00, PTDDD ; PTB as INPUT (all lines)
+
+	; PTC will be for identifying the operation
+	MOV #$00, PTCD  ; safe load
+	MOV #$FC, PTCDD ; PTC as INPUT (all lines)
 	
+	
+	;00 --> Sum
+	;01 --> Substract
+	;10 --> Multiply
+	;11 --> Division
+
+
+; Maybe add a LED to indicate if there was trouble doing an operation
+; Add leds to visualize output result
 ;***************************************************************
-; Ingresa el primer operando	
-			
-esperar:	BRCLR 0, PTAD, Debounce	;Allow input operantA 
-     		BRCLR 1, PTAD, Debounce ;Allow input operantB
-     		;BRCLR 2, PTAD, debounce ;Allow input operant
-     		;BRCLR 3, PTAD, debounce ;Allow input START ( EJECUTE OPERATION )
-; here:		BRA here
-     		;BRA esperar
-	
-        		
-;Final:		BRA Final ; End of program body
+; Ingresa el primer operando
+
+capture_wait:
+	; We will wait for button signals indicating what data is ready
+
+	; Check if any of the buttons is pressed
+	LDA PTAD
+	AND #MASK_BUTTON
+	; If Z=1, no button pressed
+	ADD #1 ; Forces Z=0, For development purposes so that it does something
+	BEQ capture_wait
+	;BRCLR 0, PTAD, debounce ;Allow input OperandA 
+	;BRCLR 1, PTAD, debounce ;Allow input OperandB
+	;BRCLR 2, PTAD, debounce ;Allow input Operator
+	;BRCLR 3, PTAD, debounce ;Allow input START ( EXECUTE OPERATION )
+	;JMP debounce ; If real buttons
+	JMP start ; For development purposes, input stuff on the variable directly
+;here:
+	;BRA here
+	;BRA esperar
+
+;final:
+	;BRA Final
+	;End of program body
 
 ;************	SUBRUTINES OR FUNCTIONS		**********************************
+start:
+	; mask Operator to the LSBs
+	LDA Operator
+	AND #MASK_OP
+	BRA choose_action
 
-Debounce:  	LDHX #5000 
+choose_action:
+	; Context: at this point acumulator is the operation
+	; Logic: Decrement Accumulator to know which op it is
+	ADD #0 ; Just so that we assure CCRs are updated
+	BEQ _sum ; If A=0 => A-0=0
+	DECA
+	BEQ _sub ; If A=1 => A-1=0
+	DECA
+	BEQ _mul ; If A=2 => A-2=0
+	DECA
+	BEQ _div ; If A=3 => A-3=0
+	BRA capture_wait
 
-Delay:		AIX #-1 ; LE RESTO 1  A H:X
-			CPHX #0 ; compara el valor de H:X con 0
-			BNE Delay; BRANCH NO EQUAL, si (H:X)=/0 
-			BRCLR 0, PTAD, CAPTURAR_1
-			BRCLR 1, PTAD, siga
-			;BRCLR 2, PTAD, OPERANDO
-			;BRCLR 3, PTAD, INICIO
-			BRA esperar
-			
-CAPTURAR_1:     MOV PTBD,OperantA
-			BRA esperar
-						
- 
+_sum:
+	; A+B
+	LDA OperandB
+	ADD OperandA
+	; Check no-overflow
+	BRA show_result
+_sub:
+	; Does A - B by default
+	; So we need to negate B
+	NEG OperandB
+	BRA _sum ; Continue with algebraic Sum with signed integers
+_mul:
+	; Notice MUL is only capable of doing unsigned multiplication
+	JSR _get_sign_magnitude
+	MOV #0,Warning ; Assume there wont be a problem by default
+	LDA OperandA
+	LDX OperandB
+	MUL
+	STA Result
+	; If (X:A[7]) != 0x0000:0b0, then result of the multiplication 
+	; cannot be represented with 8bit signed integer
+	; somehow we need to check for this and feedback to the user
+	; truncante to A[0:7) ?
+	TXA ; If X is 0, we dont suspect there is a problem yet
+	ADD #0 ; Force CCR update (TXA does not do it)
+	BEQ no_mul_problem1
+	MOV #1,Warning
+no_mul_problem1:
+	; Now check the MSB of A, needs to be zero for no problem, that is, needs to be a "positive"
+	; NOTE: This logic misses the correct case of the multiplication being -128
+	LDA Result
+	BPL no_mul_problem2
+	MOV #1,Warning
+no_mul_problem2:
+	;Everything seems fine
 
-siga: 		MOV PTBD,OperantB
-			
-			BRA  esperar 
-			nop  
-				
-            ORG	$FFFE
+	; Get sign of the multiplication with exclusive or
+	LDA SignA
+	EOR SignB ; If Z=0-> Different Signs, If Z=1-> Same Signs
+	BEQ mul_is_pos
+	NEG Result
+mul_is_pos:
+	LDA Result
+	BRA show_result
+_div:
+	nop
+	BRA show_result
+_get_sign_magnitude:
+	; Subroutine
+	; Modifies A,SignA,SignB,CCR
+	; puts the Signs of A,B in SignA,SignB respectively
+	; and makes OperandA,OperandB their absolute value
 
-						
-			DC.W  _Startup			; Reset
+	; Assume both positive by default
+	; Only changed if proven otherwise
+	MOV #0,SignA
+	MOV #0,SignA
+
+	LDA OperandA
+	BPL _a_is_positive
+	NEG OperandA
+	MOV #1,SignA
+_a_is_positive:
+	LDA OperandB
+	BPL _b_is_positive
+	NEG OperandB
+	MOV #1,SignB
+_b_is_positive:
+	RTS
+show_result:
+	STA Result
+	BRA capture_wait
+
+
+; It matters if the subrutine is far from whoever calls it, i had to put start nearer capture_wait
+; or you may use JMP?
+
+debounce:
+	LDHX #5000
+
+delay:
+	AIX #-1 ; Substract one
+	CPHX #0 ; Check if we are already at zero
+	BNE delay; Not Zero--> not ready, loop back
+	BRA choose_capture ; We waited enough... go on with the capture
+
+choose_capture:
+	BRCLR 0, PTAD, capture_a
+	BRCLR 1, PTAD, capture_b
+	BRCLR 2, PTAD, capture_op
+	BRCLR 3, PTAD, start
+	JMP capture_wait
+
+capture_a:
+	MOV PTBD,OperandA
+	JMP capture_wait
+
+capture_b:
+	MOV PTBD,OperandB
+	JMP capture_wait
+
+capture_op:
+	MOV PTCD,Operator
+	JMP capture_wait
+
+
+	ORG $FFFE
+	DC.W _Startup ; Reset
