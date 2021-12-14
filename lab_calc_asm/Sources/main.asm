@@ -236,6 +236,7 @@ _mul:
 no_mul_problem1:
 	; Now check the MSB of A, needs to be zero for no problem, that is, needs to be a "positive"
 	; NOTE: This logic misses the correct case of the multiplication being -128
+	; we could just check that the result is not the special case of -128
 	LDA Result
 	BPL no_mul_problem2
 	MOV #1,Warning
