@@ -89,13 +89,12 @@ _Startup:
 	CLR Hundreds
 	CLR Tens
 	CLR Ones
-	;CLR AAscii
-	;CLR OpAscii
-	;CLR BAscii
-	;CLR EqualAscii
-	;CLR RAscii
-	;CLR ErrorAscii
-	;CLR Message
+	CLR AAscii
+	CLR OpAscii
+	CLR BAscii
+	CLR EqualAscii
+	CLR RAscii
+	CLR ErrorAscii
 
 	; Below is only for development purposes
 	MOV #13,OperandA
