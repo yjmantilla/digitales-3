@@ -6,8 +6,10 @@
 	ABSENTRY _Startup
 
 ; Constants (ALLCAPS)
-MASK_OP: EQU %00000011
-MASK_BUTTON: EQU %00001111
+MASK_OP:		EQU		%00000011
+MASK_BUTTON:	EQU		%00001111
+MASK_SIGN:		EQU		%00000100
+
 
 ;*************************************************************************************************
 	ORG Z_RAMStart
@@ -16,6 +18,13 @@ MASK_BUTTON: EQU %00001111
 
 ; FAST VARIABLES
 ; PascalCase
+AAscii:				DS.B	4 ; Offset=0
+OpAscii:			DS.B	1 ; Offset=4
+BAscii:				DS.B	4 ; Offset=5
+EqualAscii:			DS.B	1 ; Offset=9
+RAscii:				DS.B	4 ; Offset=10
+ErrorAscii:			DS.B	1 ; Offset=14
+
 OperandA:			DS.B	1
 OperandB:			DS.B	1
 Result:  			DS.B	1
@@ -23,7 +32,23 @@ Operator:			DS.B	1
 SignA:				DS.B	1
 SignB:				DS.B	1
 SignResult:			DS.B	1
-Warning:			DS.B	1
+OperandASM:			DS.B	1
+OperandBSM:			DS.B	1
+ResultSM:  			DS.B	1
+Error:				DS.B	1
+Sign:				DS.B	1
+Hundreds:			DS.B	1
+Tens:				DS.B	1
+Ones:				DS.B	1
+Aux:				DS.B	2 ; auxiliar var
+Dummy:				DS.B	1 ; another auxiliar var
+plus:				DC.B 	"+"
+minus:				DC.B 	"-"
+times:				DC.B 	"x"
+divided:			DC.B 	"/"
+equal:				DC.B 	"="
+err:				DC.B 	"E"
+
 ;*************************************************************************************************
 ;
 ; variable/data section
@@ -31,8 +56,6 @@ Warning:			DS.B	1
 
 	ORG RAMStart 
 ; These variables will be accessed slower, as they are in RAM but not in page zero
-
-ExampleVar: DS.B   1
 
 
 ; code section
@@ -60,18 +83,29 @@ _Startup:
 	CLR Result
 	CLR SignA
 	CLR SignB
-	CLR Warning
 	CLR SignResult
-	
+	CLR Error
+	CLR Sign
+	CLR Hundreds
+	CLR Tens
+	CLR Ones
+	;CLR AAscii
+	;CLR OpAscii
+	;CLR BAscii
+	;CLR EqualAscii
+	;CLR RAscii
+	;CLR ErrorAscii
+	;CLR Message
+
 	; Below is only for development purposes
-	MOV #-128,OperandA
-	MOV #1,OperandB
-	MOV #3,Operator
+	MOV #13,OperandA
+	MOV #3,OperandB
+	MOV #2,Operator
 
 	; Tests
 
 	; Sum
-	; 127+1 -> Warning
+	; 127+1 -> -128,Error
 	; 10 + (-2) --> 8
 
 	; Substraction
@@ -79,21 +113,23 @@ _Startup:
 	; 10 - (-2) --> 12
 
 	; Multiplication
-	; 127x127 -> Warning
-	; 64x-2 --> -128, no Warning
-	; 64x2 --> -128, Warning
-	; 64x0 --> 0
-	; -64x0 --> 0
+	; 127x127 -> +001,Error
+	; 64x-2 --> -128
+	; 64x2 --> -128,Error
+	; 64x0 --> +0
+	; -64x0 --> +0
+	; 13x3 --> +39
 
 	; Division
-	; 127 / 0 -> Warning
+	; 127 / 0 -> 0, Error
 	; 8 / 4 -> 2
-	; 8 / 3 -> 2 (Rem 2)
+	; 8 / 3 -> 2
 	; 8 / -3 -> -2
-	; 3 / 4 -> 0
-	; 3 / -4 -> 0
-	; -128 / -1 -> -128, Warning
+	; 3 / 4 -> +0
+	; 3 / -4 -> +0
+	; -128 / -1 -> -128, Error
 	; -128 / 1 -> -128
+	; -128 / -2 --> +64
 	
 	
 ; ******** Initializing In ports ******************************
@@ -141,13 +177,6 @@ capture_wait:
 	;BRCLR 3, PTAD, debounce ;Allow input START ( EXECUTE OPERATION )
 	;JMP debounce ; If real buttons
 	JMP start ; For development purposes, input stuff on the variable directly
-;here:
-	;BRA here
-	;BRA esperar
-
-;final:
-	;BRA Final
-	;End of program body
 
 ;************	SUBRUTINES OR FUNCTIONS		**********************************
 ; It matters if the subrutine is far from whoever calls it, i had to put start nearer capture_wait
@@ -182,11 +211,21 @@ capture_op:
 	JMP capture_wait
 
 start:
+
+	;Print A Test
+	; LDA #0
+	; STA Dummy
+	; MOV OperandA,Aux
+	; JSR print
+
 	; mask Operator to the LSBs
 	LDA Operator
 	AND #MASK_OP
 	BRA choose_action
-
+	
+	; Test BIN2DEC
+	; LDA OperandA
+	; JSR bin_to_dec
 choose_action:
 	; Context: at this point acumulator is the operation
 	; Logic: Decrement Accumulator to know which op it is
@@ -200,15 +239,16 @@ choose_action:
 	BEQ _div ; If A=3 => A-3=0
 	BRA capture_wait
 
-show_result:
-	STA Result
-	BRA capture_wait
+
 
 _sum:
-	MOV #0,Warning ; Assume there wont be a problem by default
+	MOV plus,OpAscii
+	MOV #0,Error ; Assume there wont be a problem by default
+
 	; A+B
 	LDA OperandB
 	ADD OperandA
+check_sum:
 	TAX ; Temporally save Result (A) in X with TAX so that CCR does not change
 
 	; Check no-overflow
@@ -216,23 +256,26 @@ _sum:
 	; We must now check bit 7 (V), if A is negative means it is ON
 	ADD #0
 	BPL no_problem_sum
-	MOV #1,Warning ; There was overflow
+	MOV #1,Error ; There was overflow
 no_problem_sum:
 	TXA
 	JMP show_result
 _sub:
+	MOV minus,OpAscii
 	; Does A - B by default
 	; So we need to negate B
-	NEG OperandB
-	BRA _sum ; Continue with algebraic Sum with signed integers
+	LDA OperandA
+	SUB OperandB
+	BRA check_sum ; Continue with algebraic Sum with signed integers
 _mul:
 	; Notice MUL is only capable of doing unsigned multiplication
-	JSR _get_sign_magnitude
-	MOV #0,Warning ; Assume there wont be a problem by default
-	LDA OperandA
-	LDX OperandB
+	JSR get_A_B_sign_magnitude
+	MOV #0,Error ; Assume there wont be a problem by default
+	MOV times,OpAscii
+	LDA OperandASM
+	LDX OperandBSM
 	MUL
-	STA Result
+	STA ResultSM
 	; If (X:A[7]) != 0x0000:0b0, then result of the multiplication 
 	; cannot be represented with 8bit signed integer
 	; somehow we need to check for this and feedback to the user
@@ -240,40 +283,56 @@ _mul:
 	TXA ; If X is 0, we dont suspect there is a problem yet
 	ADD #0 ; Force CCR update (TXA does not do it)
 	BEQ check_sign
-	MOV #1,Warning
+	MOV #1,Error
 check_sign:
 	; Now check the MSB of A, needs to be zero for no problem, that is, needs to be a "positive"
 	; NOTE: This logic misses the correct case of the multiplication being -128
 	; we could just check that the result is not the special case of -128
-	LDA Result
+	LDA ResultSM
 	BPL get_muldiv_sign
-	MOV #1,Warning ; By this point u128 will give warning
+	MOV #1,Error ; By this point u128 will give warning
 get_muldiv_sign:
-	; Assumes Result has the unsigned result
+	; Assumes ResultSM has the unsigned result
 
 	; Get sign of the multiplication/division with exclusive or
 	; Assumes SignA SignB Set
 	; Asummes output in Result
 	LDA SignA
-	EOR SignB ; If Z=0-> Different Signs, If Z=1-> Same Signs
+	AND #MASK_SIGN
+	STA Aux
+	LDA SignB ;
+	AND #MASK_SIGN
+	EOR Aux ; If Z=0-> Different Signs, If Z=1-> Same Signs
+	MOV #43,Aux
+	ADD #0
+	BEQ pos_sign
+	MOV #45,Aux ; Negative
+pos_sign:
+	LDA ResultSM
+	STA Result ;
+
+	LDA Aux
 	STA SignResult
 	ADD #0
-	BEQ muldiv_is_pos
-	NEG Result ; notice NEG(-128)-->(-128)
+	BRCLR 2 , SignResult , muldiv_is_pos
+	LDA ResultSM
+	NEGA
+	STA Result ; notice NEG(-128)-->(-128)
 muldiv_is_pos:
 	; Handle 128 Case
 	; Check if Result is u128 and ResultSign is Negative (representable) 
-	; Here we need to overwite de Warning flagged on before
+	; Here we need to overwite de Error flagged on before
 	LDA Result
 	ADD #-128 ; u128 + (-)128=0
 	BNE not_128
 	; Confirmed 128
-	; Check Sign, Overwite Warning Only if ResultSign = 1 (negative)
+	; Check Sign, Overwite Error Only if ResultSign = 1 (negative)
 	LDA SignResult
-	BEQ not_128 ; If Sign is Positive (A=0)--> +128--> Unrepresentable --> Keep the Warning of Before
+	CMP #43
+	BEQ not_128 ; If Sign is Positive (A=0)--> +128--> Unrepresentable --> Keep the Error of Before
 	; Here, sign is negative.
-	; Overwrite Warning
-	MOV #0,Warning
+	; Overwrite Error
+	MOV #0,Error
 not_128:
 	LDA Result
 	JMP show_result
@@ -281,49 +340,143 @@ _div:
 	; Notice DIV is only capable of doing unsigned division
 	; A / B
 	; Divide, A <-- (H:A) / (X); H <- Remainder
-	MOV #0,Warning ; Assume there wont be a problem by default
-
-	JSR _get_sign_magnitude
+	MOV #0,Error ; Assume there wont be a problem by default
+	MOV divided,OpAscii
+	JSR get_A_B_sign_magnitude
 
 	; Check B is not 0
-	LDA OperandB
+	LDA OperandBSM
 	BEQ division_by_zero
 
 	; What happens if A < B, does div handles it gracefully?
-	LDA OperandA
+	LDA OperandASM
 	LDHX #0 ; Clear H
-	LDX OperandB
+	LDX OperandBSM
 	DIV
-	STA Result
+	STA ResultSM
 	JMP check_sign
 division_by_zero:
 	AND #0 ; Clear A
-	MOV #1,Warning ; Have special led for zero division?
+	MOV #1,Error ; Have special led for zero division?
 	JMP show_result
 
-
-_get_sign_magnitude:
+get_A_B_sign_magnitude:
 	; Subroutine
-	; Modifies A,SignA,SignB,CCR
+	; Modifies OperandASM,SignA,OperandBSM,SignB,CCR
 	; puts the Signs of A,B in SignA,SignB respectively
-	; and makes OperandA,OperandB their absolute value
-
-	; Assume both positive by default
-	; Only changed if proven otherwise
-	MOV #0,SignA
-	MOV #0,SignB
-
+	; and makes OperandASM,OperandBSM their absolute value
 	LDA OperandA
-	BPL _a_is_positive
-	NEG OperandA
-	MOV #1,SignA
-_a_is_positive:
+	JSR get_sign_magnitude
+	STA OperandASM
+	STX SignA
 	LDA OperandB
-	BPL _b_is_positive
-	NEG OperandB
-	MOV #1,SignB
-_b_is_positive:
+	JSR get_sign_magnitude
+	STA OperandBSM
+	STX SignB
 	RTS
+
+get_sign_magnitude:
+	; Assumes A is input in 2 complement
+	; Saves sign at X
+	; Saves uint at A
+	ADD #0
+	BPL is_positive
+	BMI is_negative
+is_positive:
+	LDX #43
+	; A is already at correct representaion
+	RTS
+is_negative:
+	NEGA
+	LDX #45
+	RTS
+
+bin_to_dec:
+	; Assume input is at A
+	; Modifies HX
+	JSR get_sign_magnitude
+	; X=SIGN , A=uint
+	; Check B is not 0
+	STX Sign
+	LDHX #0 ; Clear H
+	LDX  #100
+	DIV ; A--> Division 9, H--> Residuo-->21
+	ADD #48
+	STA Hundreds
+	STHX Aux
+	LDA Aux
+	LDHX #0
+	LDX #10
+	DIV
+	ADD #48
+	STA Tens
+	STHX Aux
+	LDA Aux
+	ADD #48
+	STA Ones
+	RTS
+
+print:
+	;Assume 
+	;	num to print at Aux
+	;	offset from RamStart at Dummy
+	LDA Aux
+	JSR bin_to_dec
+	
+	; Define origin of print
+	LDHX #0
+	LDA Dummy
+	TAX
+
+	LDA Sign
+	STA AAscii,X
+
+	LDA Hundreds
+	INCX
+	STA AAscii,X
+	
+	LDA Tens
+	INCX
+	STA AAscii,X
+
+	LDA Ones
+	INCX
+	STA AAscii,X
+
+	RTS
+
+show_result:
+	; Assume No error
+	MOV #0,ErrorAscii
+
+	STA Result
+	LDA OperandA
+	MOV #0,Dummy
+	STA Aux
+	JSR print
+
+	; Operation Already Printed in each op's function
+
+	LDA OperandB
+	MOV #5,Dummy
+	STA Aux
+	JSR print
+
+	MOV equal,EqualAscii
+
+	LDA Result
+	MOV #10,Dummy
+	STA Aux
+	JSR print
+
+	LDA Error
+	CMP #1
+	BNE no_error
+	MOV err,ErrorAscii
+no_error:
+	nop
+	JMP capture_wait
+
 
 	ORG $FFFE
 	DC.W _Startup ; Reset
