@@ -73,7 +73,7 @@ Dummy:				DS.B	1
 ;**************************************************************************************************
 
 ; These variables will be accessed slower, as they are in RAM but not in page zero
-	ORG RAMStart 
+	ORG RAMStart
 
 ; Sign Magnitude Representation
 ; Useful for multiplication, division and displaying in decimal
@@ -95,6 +95,7 @@ Ones:				DS.B	1
 ;**************************************************************************************************
 ; MESSAGE TO USER
 ;**************************************************************************************************
+	ORG $0130
 AAscii:				DS.B	4 ; Offset=0
 OpAscii:			DS.B	1 ; Offset=4
 BAscii:				DS.B	4 ; Offset=5
@@ -643,9 +644,8 @@ print:
 	; Define origin of print
 	; Depending on the value of Dummy
 	; AAscii+Dummy can represent AAscii,BAscii or RAscii
-	LDHX #0
-	LDA Dummy
-	TAX
+	LDHX #0 ; Is important to clear H here, something to do with the addresing mode...
+	LDX Dummy
 
 	; Sign
 	; Is the first position so X is already at that point
