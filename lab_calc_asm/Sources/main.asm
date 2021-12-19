@@ -505,7 +505,7 @@ get_muldiv_sign:
 	; We can check if the sign are the same or equal
 	; Doing a xor of the masked bits of the ascii sign ('+','-')
 	EOR Aux ; If Z=0-> Different Signs, If Z=1-> Same Signs
-	JSR map_sign_ascii
+	JSR map_sign_ascii ; map sign given by EOR to ASCII
 handle_128:
 	; Handle 128 Case
 	; Check if Result is u128 and ResultSign is Negative (representable) 
