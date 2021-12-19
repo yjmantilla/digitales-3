@@ -171,6 +171,10 @@ _Startup:
 	STA RAscii
 	STA ErrorAscii
 
+	; Check if we are in DEV_MODE
+	LDA #DEV_MODE
+	CMP #1
+	BNE init_ports
 
 	;********************************************
 	; DEV ONLY CODE
@@ -180,9 +184,6 @@ _Startup:
 	; This should be modified by the user interacting
 	; with the switches and buttons
 
-	LDA #DEV_MODE
-	CMP #1
-	BNE init_ports
 	MOV #127,OperandA
 	MOV #127,OperandB
 	MOV #2,Operator
@@ -254,6 +255,8 @@ capture_wait:
 	; For development purposes
 	; so that it does something
 	; without needing to operate the buttons/switches
+
+	; Check if we are in DEV_MODE
 	LDA #DEV_MODE
 	CMP #1
 	BNE no_force_start
