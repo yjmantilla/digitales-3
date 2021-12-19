@@ -184,9 +184,9 @@ _Startup:
 	; This should be modified by the user interacting
 	; with the switches and buttons
 
-	MOV #127,OperandA
-	MOV #127,OperandB
-	MOV #2,Operator
+	MOV #-128,OperandA
+	MOV #-2,OperandB
+	MOV #3,Operator
 
 	;********************************************
 	; Testing the calculator
@@ -198,6 +198,7 @@ _Startup:
 	; Substraction
 	; Need to do more
 	; 10 - (-2) --> 12
+	; 10 - 2 --> 8
 
 	; Multiplication
 	; 127x127 -> +001,Error
@@ -485,17 +486,9 @@ get_muldiv_sign:
 	; Assumes SignA SignB Set
 	; Asummes output in Result
 	; Assumes ResultABS has the magnitude of the result
-	; Save result sign at Sign Result
-	; Save result AbsValue at ResultAbs
+	; Saves result sign at Sign Result
+	; Saves result AbsValue at ResultAbs
 	; Saves signed result at Result
-
-	; Assume Result's Sign is Positive
-	; Thus ResultAbsoluteValue = Result
-	; Change this otherwise
-	LDA #PLUS
-	STA SignResult
-	LDA ResultABS
-	STA Result
 
 	; Obtaining A Sign
 	; We need to mask as we used '+' and '-' chars
@@ -512,19 +505,7 @@ get_muldiv_sign:
 	; We can check if the sign are the same or equal
 	; Doing a xor of the masked bits of the ascii sign ('+','-')
 	EOR Aux ; If Z=0-> Different Signs, If Z=1-> Same Signs
-	STA SignResult ; Saving the Sign of the Result
-
-	; If the sign is negative, change the supposition done before (which was being '+')
-	; We can test if it is positive because in that case EOR its 0
-	ADD #0         ; Force CCR Update
-	BEQ handle_128 ; If sign is positive, we continue to handle the 128 case
-	LDA #MINUS     ; Overwrite Sign with Negative
-	STA SignResult
-	               ; As the sign was negative, then Result has the wrong sign from the initial supposition
-	LDA ResultABS
-	NEGA           ; notice special case: NEG(-128)-->(-128)
-	STA Result
-
+	JSR map_sign_ascii
 handle_128:
 	; Handle 128 Case
 	; Check if Result is u128 and ResultSign is Negative (representable) 
@@ -549,7 +530,29 @@ muldiv_ready:
 ;************************************************
 ; SIGN & MAGNITUDE Auxiliar Routines
 ;************************************************
-
+map_sign_ascii:
+	; Assumes A has the sign in binary (0:+,1:!0).
+	; Assumes ResultABS with the absolute value of the result
+	; loads SignResult with PLUS if positive, else MINUS
+	; load Result with the signed 2'Complement value given by ResultABS
+	ADD #0 ; Update CCR
+	BEQ map_plus
+	BRA map_minus
+map_plus:
+	LDA #PLUS
+	STA SignResult
+	; Since it is positive, the signed value is already the absolute value
+	LDA ResultABS
+	STA Result
+	RTS
+map_minus:
+	LDA #MINUS
+	STA SignResult
+	; Negate the absolute result to get signed value
+	LDA ResultABS
+	NEGA           ; notice special case: NEG(-128)-->(-128)
+	STA Result
+	RTS
 get_A_B_sign_magnitude:
 	; Subroutine
 	; Modifies OperandAABS,SignA,OperandBABS,SignB,CCR
