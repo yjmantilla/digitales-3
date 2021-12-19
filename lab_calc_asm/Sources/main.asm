@@ -93,7 +93,7 @@ Tens:				DS.B	1
 Ones:				DS.B	1
 
 ;**************************************************************************************************
-; MESSAGE TO USER
+; MESSAGE TO USER at 0x0130
 ;**************************************************************************************************
 	ORG $0130
 AAscii:				DS.B	4 ; Offset=0
@@ -105,7 +105,7 @@ ErrorAscii:			DS.B	1 ; Offset=14
 
 ; These variables save the ASCII representation of each part
 ; of the intended operation of the user
-; Thus the user can see whats happening in the memory
+; Thus the user can see whats happening in the memory at 0x0130
 ; In a human-readable way
 ; These variables are contiguous so that the message is "one sentence"
 
@@ -183,8 +183,8 @@ _Startup:
 	LDA #DEV_MODE
 	CMP #1
 	BNE init_ports
-	MOV #13,OperandA
-	MOV #3,OperandB
+	MOV #127,OperandA
+	MOV #127,OperandB
 	MOV #2,Operator
 
 	;********************************************
