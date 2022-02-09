@@ -184,9 +184,9 @@ _Startup:
 	; This should be modified by the user interacting
 	; with the switches and buttons
 
-	MOV #126,OperandA
-	MOV #2,OperandB
-	MOV #0,Operator
+	MOV #5,OperandA
+	MOV #0,OperandB
+	MOV #3,Operator
 
 	;********************************************
 	; Testing the calculator
