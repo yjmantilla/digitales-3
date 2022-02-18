@@ -249,7 +249,6 @@ void main(void)
     		PTBD_PTBD0=1;//LEDS
     		PTBD_PTBD1=0;//LEDS
     		PTBD_PTBD2=1;
-			//LCDWriteCenterMsg(LCD_USE_SECOND_LINE,"CONTANDO!",0);
 			time_pulse_width=0;
     	}
     	else if(flag==1 && PTED_PTED2==1){//SECOND EDGE
@@ -258,7 +257,6 @@ void main(void)
     		PTBD_PTBD0=0;//LEDS
     		PTBD_PTBD1=1;//LEDS
     		PTBD_PTBD2=0;
-    		//time_pulse_width=(long)(count_Ovf*30000);//+time_edge_2-time_edge_1);//TIME BETWEEN time_edge_1 AND time_edge_2 
     		
     		PTBD_PTBD3=0; // Asumimos que no es defectuosa.
     		// convert 123 to string [buf]
@@ -277,19 +275,9 @@ void main(void)
     		}
     		
     		count_Ovf=0;
-    		//LCD_Clear();
-    		//itoa_simple(snum, time_pulse_width);
-    		//LCDWriteCenterMsg(LCD_USE_SECOND_LINE,snum,0);
-    		/*
-			 * count_Ovf: NUMBER OF TIMES AN OVERFLOWS OCCURS
-			 * time_pulse_width=(number_of_times_that_happens_OVERFLOW)*(VALUE_MODULE)+time_edge_1-time_edge_2
-			 * 
-			 * with this formulates, we considered all cases.
-			 * 
-			 * */
     	}	
     }
     
 	}
   }
-}//main
+}
