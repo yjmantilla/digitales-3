@@ -1,33 +1,8 @@
 // Headers files for accessing the MCU registers
 #include <hidef.h>
 #include "derivative.h"
-#include "lcd.h"
-//#include <stdlib.h>
-#include <string.h>
 
 #define MODULO 30000//VALUE MODULE REGISTER
-
-// 10% Error Margin
-#define B1_LOW 54
-#define B1 60
-#define B1_HIGH 66
-unsigned int B1_COUNT=0;
-
-#define B2_LOW 108
-#define B2 120
-#define B2_HIGH 132
-unsigned int B2_COUNT=0;
-
-#define B3_LOW 162
-#define B3 180
-#define B3_HIGH 198
-unsigned int B3_COUNT=0;
-
-unsigned int BD_COUNT=0;
-
-char COUNTMSG[50];
-
-char snum[10];
 
 //VariablEs for counting and indicating TIMER event.
 // Volatile is useful for memory-mapped IO, prevents compiler optimization - avoid caching it, indicates the variable may change by outside factors
@@ -47,7 +22,6 @@ volatile unsigned int  count_Ovf=0; //variable for indicating overflow count
  * */
 
 // ACK --> Remove the interruption from the queue
-
 
 void TIMER1_Init(void)// TIMER MODULE FUNCTION INITIALIZATION
 {
@@ -149,54 +123,13 @@ interrupt 15 void TPM1_OvF_ISR(void){//INTERRUPT ENABLE
 // PORT FUNCTION INITIALIZATION
 void Port_Init(void)
 {
-	PTBDD=0xFF;//OUT FOR LEDS
-	PTBD=0x00;
-	
+	PTADD=0xFF;//OUT FOR LEDS
+	PTAD=0x00;
 	PTDD = 0x00;
 	PTDDD = 0x00;
-	PTDPE = 0xFF;
 	PTED = 0x00;
 	PTEDD = 0x00;
 
-
-}
-static char *itoa_simple_helper(char *dest, int i) {
-  if (i <= -10) {
-    dest = itoa_simple_helper(dest, i/10);
-  }
-  *dest++ = '0' - i%10;
-  return dest;
-}
-
-char *itoa_simple(char *dest, int i) {
-  char *s = dest;
-  if (i < 0) {
-    *s++ = '-';
-  } else {
-    i = -i;
-  }
-  *itoa_simple_helper(s, i) = '\0';
-  return dest;
-}
-
-void show_count(void){
-	LCD_Clear();
-	itoa_simple(snum, B1_COUNT);
-	strcpy(COUNTMSG, "# STANDARD MENOS:");
-	LCDWriteMsg(LCD_USE_FIRST_LINE,strcat(COUNTMSG,snum),0);
-
-
-	itoa_simple(snum, B2_COUNT);
-	strcpy(COUNTMSG, "# STANDARD      :");
-	LCDWriteMsg(LCD_USE_SECOND_LINE,strcat(COUNTMSG,snum),0);
-
-	itoa_simple(snum, B3_COUNT);
-	strcpy(COUNTMSG, "# STANDARD MAS  :");
-	LCDWriteMsg(LCD_USE_THIRD_LINE,strcat(COUNTMSG,snum),0);
-
-	itoa_simple(snum, BD_COUNT);
-	strcpy(COUNTMSG, "# DEFECTUOSAS   :");
-	LCDWriteMsg(LCD_USE_FOURTH_LINE,strcat(COUNTMSG,snum),0);
 
 }
 
@@ -205,81 +138,40 @@ void main(void)
 {
   // VARIABLES DECLARATIONS
   char flag=0;//VARIABLE FOR INDICATING A FIRST EDGE OR SECOND EDGE
+  
   //SYSTEM INITIALIZATION
   SOPT1_COPT = 0;
   Port_Init();
-  //MCG_Init();
-  LCD_Init();
   TIMER1_Init();
 
   // ENABLE INTERRUPTS 
   EnableInterrupts; 
   Flag_Int_IC=0;
-  LCDWriteCenterMsg(LCD_USE_FIRST_LINE,"BIENVENIDOS AL",0);
-  LCDWriteCenterMsg(LCD_USE_SECOND_LINE,"CONTADOR DE BOTELLAS",0);
-  LCDWriteCenterMsg(LCD_USE_THIRD_LINE,"DE DINOINGENIEROS",0);
-  LCDWriteCenterMsg(LCD_USE_FOURTH_LINE,"RARRRR!",0);
-
-
   for(;;) 
   {
-	if (PTDD_PTDD4==1)
-	{	
-		LCD_Clear();
-		LCDWriteCenterMsg(LCD_USE_SECOND_LINE,"BANDA APAGADA",0);
-	    if (PTDD_PTDD0 == 0)
-	    {
-	    	show_count();
-	    }
-
-	}
-	else{
-		show_count();
-
-		__asm WAIT;
+    __asm WAIT;
     
 
     if(Flag_Int_IC==1){
     	Flag_Int_IC=0;//DON'T FORGET TO TURN OFF THE FLAG
-    	
-    	if (flag==0 && PTED_PTED2==0){//FIRST EDGE
+
+    	if (flag==0){//FIRST EDGE
     		count_Ovf=0;
     		time_edge_1=TPM1C0V;//CAPTURE THE TIME INDICATING A RISING OR FALLING EDGE
     		flag=1;//SECOND EDGE
-    		PTBD_PTBD0=1;//LEDS
-    		PTBD_PTBD1=0;//LEDS
-    		PTBD_PTBD2=1;
-			//LCDWriteCenterMsg(LCD_USE_SECOND_LINE,"CONTANDO!",0);
-			time_pulse_width=0;
+    		PTAD_PTAD0=1;//LEDS
+    		PTAD_PTAD1=0;//LEDS
+    		PTAD_PTAD2=1;
     	}
-    	else if(flag==1 && PTED_PTED2==1){//SECOND EDGE
+    	else if(flag==1){//SECOND EDGE
     		time_edge_2=TPM1C0V;//CAPTURE THE TIME INDICATING THE OTHERWISE
     		flag=0;//FISRT EDGE (NEW PULSE)
-    		PTBD_PTBD0=0;//LEDS
-    		PTBD_PTBD1=1;//LEDS
-    		PTBD_PTBD2=0;
-    		//time_pulse_width=(long)(count_Ovf*30000);//+time_edge_2-time_edge_1);//TIME BETWEEN time_edge_1 AND time_edge_2 
-    		
-    		PTBD_PTBD3=0; // Asumimos que no es defectuosa.
-    		// convert 123 to string [buf]
-    		if (B1_LOW < count_Ovf && count_Ovf < B1_HIGH){
-    			B1_COUNT++;
-    			}
-    		else if (B2_LOW < count_Ovf && count_Ovf < B2_HIGH){
-    			B2_COUNT++;
-    			}
-    		else if (B3_LOW < count_Ovf && count_Ovf < B3_HIGH){
-    			B3_COUNT++;
-    		}
-    		else {
-    			BD_COUNT++;
-        		PTBD_PTBD3=1; // Prendemos señal de alarma.
-    		}
+    		PTAD_PTAD0=0;//LEDS
+    		PTAD_PTAD1=1;//LEDS
+    		PTAD_PTAD2=0;
+    		time_pulse_width=(long)(count_Ovf*30000+time_edge_2-time_edge_1);//TIME BETWEEN time_edge_1 AND time_edge_2 
     		
     		count_Ovf=0;
-    		//LCD_Clear();
-    		//itoa_simple(snum, time_pulse_width);
-    		//LCDWriteCenterMsg(LCD_USE_SECOND_LINE,snum,0);
     		/*
 			 * count_Ovf: NUMBER OF TIMES AN OVERFLOWS OCCURS
 			 * time_pulse_width=(number_of_times_that_happens_OVERFLOW)*(VALUE_MODULE)+time_edge_1-time_edge_2
@@ -290,6 +182,6 @@ void main(void)
     	}	
     }
     
-	}
+    
   }
 }//main
