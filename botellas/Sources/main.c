@@ -2,7 +2,6 @@
 #include <hidef.h>
 #include "derivative.h"
 #include "lcd.h"
-//#include <stdlib.h>
 #include <string.h>
 
 #define MODULO 30000//VALUE MODULE REGISTER
@@ -90,35 +89,12 @@ void TIMER1_Init(void)// TIMER MODULE FUNCTION INITIALIZATION
 	TPM1C0SC_ELS0B=1;
 	TPM1C0SC_ELS0A=1;
 	// 11 = Capture on rising or falling edge
-
-	/////////////// CHANNEL 1 //////////////////////////////////////////
-	//CONFIGURE CHANNEL 1 AS O.C.  ->PTE3
-	
-	//16.4.2.2 Output Compare Mode
-	// Why output-compare? Because an output is done when the counter of the timer is compared to a desired value and it is equal
-	//With the output-compare function, the TPM can generate timed pulses with programmable position,
-	//polarity, duration, and frequency. When the counter reaches the value in the channel-value registers of an
-	//output-compare channel, the TPM can set, clear, or toggle the channel pin.
-	TPM1C1SC_CH1IE=0;//INTERRUPT DISABLE
-	//MODE OUTPUT CAPTURE
-	TPM1C1SC_MS1B=0;
-	TPM1C1SC_MS1A=1;
-	//SET OUTPUT ON COMPARE
-	// 3 submodes --> toggle , clear, set. Here we use 11=set
-	TPM1C1SC_ELS1B=1; 
-	TPM1C1SC_ELS1A=1;
-	
-	//TPMxCnV
-	TPM1C1V=5000;//PULSE WIDTH
-	//THE PERIOD OF THE SIGNAL IS DEFINED BY THE MODULE REGISTER
 	
 	// After configuring the timer we end with setting the clock
 	// Enable system clock --> 01=Bus rate clock
 	TPM1SC_CLKSB=0;// BUS RATE CLOCK
 	TPM1SC_CLKSA=1;
 }
-
-
 
 interrupt 9 void TPM1_IC_ISR(void){//INTERRUPT ENABLE, priority 9
 	// CLEAR CH0F IN TWO STEPS:
@@ -149,15 +125,34 @@ interrupt 15 void TPM1_OvF_ISR(void){//INTERRUPT ENABLE
 // PORT FUNCTION INITIALIZATION
 void Port_Init(void)
 {
-	PTBDD=0xFF;//OUT FOR LEDS
-	PTBD=0x00;
+	//
+	// Datos Display
+	// A0,A1,A2,A3
+	PTAD=0x00;
+	PTADD=0xFF;
 	
+	// C6 --> RS
+	// C4 --> ENABLE
+	PTCD=0x00;
+	PTCDD=0xFF;
+	
+	
+	PTBDD=0xFF;
+	PTBD=0x00;
+	// B0 --> Salida Cuenta
+	// B1 --> Salida Dejo de contar
+	// B2 --> Salida Alarma defectuoso
+	
+	//D0 --> Entrada Switche Banda/cuenta prendida/apagada
 	PTDD = 0x00;
 	PTDDD = 0x00;
+	
+	// E2 --> Entrada Sensor
 	PTDPE = 0xFF;
 	PTED = 0x00;
 	PTEDD = 0x00;
 
+	
 
 }
 static char *itoa_simple_helper(char *dest, int i) {
@@ -223,7 +218,7 @@ void main(void)
 
   for(;;) 
   {
-	if (PTDD_PTDD4==1)
+	if (PTDD_PTDD0==1)
 	{	
 		LCD_Clear();
 		LCDWriteCenterMsg(LCD_USE_SECOND_LINE,"BANDA APAGADA",0);
@@ -248,7 +243,6 @@ void main(void)
     		flag=1;//SECOND EDGE
     		PTBD_PTBD0=1;//LEDS
     		PTBD_PTBD1=0;//LEDS
-    		PTBD_PTBD2=1;
 			time_pulse_width=0;
     	}
     	else if(flag==1 && PTED_PTED2==1){//SECOND EDGE
@@ -256,7 +250,6 @@ void main(void)
     		flag=0;//FISRT EDGE (NEW PULSE)
     		PTBD_PTBD0=0;//LEDS
     		PTBD_PTBD1=1;//LEDS
-    		PTBD_PTBD2=0;
     		
     		PTBD_PTBD3=0; // Asumimos que no es defectuosa.
     		// convert 123 to string [buf]
