@@ -12,14 +12,16 @@
 #define B1_HIGH 66
 unsigned int B1_COUNT=0;
 
-#define B2_LOW 108
-#define B2 120
-#define B2_HIGH 132
+// 25 28 29 26 25 30 28 28 28 30 27 27 31
+#define B2_LOW 24
+#define B2 26
+#define B2_HIGH 30
 unsigned int B2_COUNT=0;
 
-#define B3_LOW 162
-#define B3 180
-#define B3_HIGH 198
+// 32 31 35 34 34 30 32 32 32 34 32
+#define B3_LOW 31
+#define B3 32
+#define B3_HIGH 35
 unsigned int B3_COUNT=0;
 
 unsigned int BD_COUNT=0;
