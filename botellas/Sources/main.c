@@ -1,3 +1,18 @@
+/***************************************************************************
+   Este programa muestra como hacer uso de un LCD, empleando una interfaz
+   de 4-bits para los datos.
+   
+   ALAMBRADA (JM60)   
+   
+              PTC6 PTC4                          PTA0 PTA1 PTA2 PTA3 VCC
+    _|____|____|____|____|____|____|____|____|____|____|____|____|____|__
+   |           RS   E                             D4   D5   D6   D7   BL |
+   | 1                                                                16 |
+   |         LCD                                                         |
+   |_____________________________________________________________________|
+          
+****************************************************************************/
+
 // Headers files for accessing the MCU registers
 #include <hidef.h>
 #include "derivative.h"
@@ -6,25 +21,24 @@
 
 #define MODULO 30000//VALUE MODULE REGISTER
 
-// 10% Error Margin
-#define B1_LOW 54
-#define B1 60
-#define B1_HIGH 66
-unsigned int B1_COUNT=0;
 
-// 25 28 29 26 25 30 28 28 28 30 27 27 31
-#define B2_LOW 24
-#define B2 26
-#define B2_HIGH 30
+
+//
+#define B1_LOW 12
+#define B1_HIGH 20
 unsigned int B2_COUNT=0;
 
-// 32 31 35 34 34 30 32 32 32 34 32
-#define B3_LOW 31
-#define B3 32
-#define B3_HIGH 35
+#define B2_LOW 34
+#define B2_HIGH 40
+unsigned int B1_COUNT=0;
+
+// 47 46 47 50 45 47 50 47 48 48
+#define B3_LOW 46
+#define B3_HIGH 56
 unsigned int B3_COUNT=0;
 
 unsigned int BD_COUNT=0;
+int total =0;
 
 char COUNTMSG[50];
 
@@ -133,6 +147,10 @@ void Port_Init(void)
 	PTAD=0x00;
 	PTADD=0xFF;
 	
+	// Salida logica motor
+	PTFD=0x00;
+	PTFDD=0xFF;
+
 	// C6 --> RS
 	// C4 --> ENABLE
 	PTCD=0x00;
@@ -146,6 +164,7 @@ void Port_Init(void)
 	// B2 --> Salida Alarma defectuoso
 	
 	//D0 --> Entrada Switche Banda/cuenta prendida/apagada
+	//D1--> modo average o absoluto
 	PTDD = 0x00;
 	PTDDD = 0x00;
 	
@@ -176,8 +195,9 @@ char *itoa_simple(char *dest, int i) {
   return dest;
 }
 
-void show_count(void){
+void show_count(int i){
 	LCD_Clear();
+	if (i==0){
 	itoa_simple(snum, B1_COUNT);
 	strcpy(COUNTMSG, "# STANDARD MENOS:");
 	LCDWriteMsg(LCD_USE_FIRST_LINE,strcat(COUNTMSG,snum),0);
@@ -194,6 +214,28 @@ void show_count(void){
 	itoa_simple(snum, BD_COUNT);
 	strcpy(COUNTMSG, "# DEFECTUOSAS   :");
 	LCDWriteMsg(LCD_USE_FOURTH_LINE,strcat(COUNTMSG,snum),0);
+	}
+	else
+	{
+		total = B1_COUNT+B2_COUNT+B3_COUNT+BD_COUNT;
+
+		itoa_simple(snum, (B1_COUNT*100/total));
+		strcpy(COUNTMSG, "# STANDARD MENOS%:");
+		LCDWriteMsg(LCD_USE_FIRST_LINE,strcat(COUNTMSG,snum),0);
+
+
+		itoa_simple(snum, (B2_COUNT*100/total));
+		strcpy(COUNTMSG, "# STANDARD      %:");
+		LCDWriteMsg(LCD_USE_SECOND_LINE,strcat(COUNTMSG,snum),0);
+
+		itoa_simple(snum, (B3_COUNT*100/total));
+		strcpy(COUNTMSG, "# STANDARD MAS  %:");
+		LCDWriteMsg(LCD_USE_THIRD_LINE,strcat(COUNTMSG,snum),0);
+
+		itoa_simple(snum, (BD_COUNT*100/total));
+		strcpy(COUNTMSG, "# DEFECTUOSAS   %:");
+		LCDWriteMsg(LCD_USE_FOURTH_LINE,strcat(COUNTMSG,snum),0);
+	}
 
 }
 
@@ -220,20 +262,21 @@ void main(void)
 
   for(;;) 
   {
+	PTFD_PTFD1=!PTDD_PTDD0;
+
 	if (PTDD_PTDD0==1)
 	{	
 		LCD_Clear();
 		LCDWriteCenterMsg(LCD_USE_SECOND_LINE,"BANDA APAGADA",0);
 	    if (PTDD_PTDD0 == 0)
 	    {
-	    	show_count();
+	    	show_count(!PTDD_PTDD1);
 	    }
 
 	}
 	else{
-		show_count();
-
-		__asm WAIT;
+		show_count(!PTDD_PTDD1);
+	__asm WAIT;
     
 
     if(Flag_Int_IC==1){
@@ -255,13 +298,13 @@ void main(void)
     		
     		PTBD_PTBD3=0; // Asumimos que no es defectuosa.
     		// convert 123 to string [buf]
-    		if (B1_LOW < count_Ovf && count_Ovf < B1_HIGH){
+    		if (B1_LOW <= count_Ovf && count_Ovf <= B1_HIGH){
     			B1_COUNT++;
     			}
-    		else if (B2_LOW < count_Ovf && count_Ovf < B2_HIGH){
+    		else if (B2_LOW <= count_Ovf && count_Ovf <= B2_HIGH){
     			B2_COUNT++;
     			}
-    		else if (B3_LOW < count_Ovf && count_Ovf < B3_HIGH){
+    		else if (B3_LOW <= count_Ovf && count_Ovf <= B3_HIGH){
     			B3_COUNT++;
     		}
     		else {
