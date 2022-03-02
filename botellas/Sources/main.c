@@ -213,20 +213,20 @@ void show_count(int i){
 	LCD_Clear();
 	if (i==0){
 	itoa_simple(snum, B1_COUNT);
-	strcpy(COUNTMSG, "# STANDARD MENOS:");
+	strcpy(COUNTMSG, "STANDARD MENOS:");
 	LCDWriteMsg(LCD_USE_FIRST_LINE,strcat(COUNTMSG,snum),0);
 
 
 	itoa_simple(snum, B2_COUNT);
-	strcpy(COUNTMSG, "# STANDARD      :");
+	strcpy(COUNTMSG, "STANDARD      :");
 	LCDWriteMsg(LCD_USE_SECOND_LINE,strcat(COUNTMSG,snum),0);
 
 	itoa_simple(snum, B3_COUNT);
-	strcpy(COUNTMSG, "# STANDARD MAS  :");
+	strcpy(COUNTMSG, "STANDARD MAS  :");
 	LCDWriteMsg(LCD_USE_THIRD_LINE,strcat(COUNTMSG,snum),0);
 
 	itoa_simple(snum, BD_COUNT);
-	strcpy(COUNTMSG, "# DEFECTUOSAS   :");
+	strcpy(COUNTMSG, "DEFECTUOSAS   :");
 	LCDWriteMsg(LCD_USE_FOURTH_LINE,strcat(COUNTMSG,snum),0);
 	}
 	else
@@ -234,20 +234,20 @@ void show_count(int i){
 		total = B1_COUNT+B2_COUNT+B3_COUNT+BD_COUNT;
 
 		itoa_simple(snum, (B1_COUNT*100/total));
-		strcpy(COUNTMSG, "# STANDARD MENOS%:");
+		strcpy(COUNTMSG, "STANDARD MENOS%:");
 		LCDWriteMsg(LCD_USE_FIRST_LINE,strcat(COUNTMSG,snum),0);
 
 
 		itoa_simple(snum, (B2_COUNT*100/total));
-		strcpy(COUNTMSG, "# STANDARD      %:");
+		strcpy(COUNTMSG, "STANDARD      %:");
 		LCDWriteMsg(LCD_USE_SECOND_LINE,strcat(COUNTMSG,snum),0);
 
 		itoa_simple(snum, (B3_COUNT*100/total));
-		strcpy(COUNTMSG, "# STANDARD MAS  %:");
+		strcpy(COUNTMSG, "STANDARD MAS  %:");
 		LCDWriteMsg(LCD_USE_THIRD_LINE,strcat(COUNTMSG,snum),0);
 
 		itoa_simple(snum, (BD_COUNT*100/total));
-		strcpy(COUNTMSG, "# DEFECTUOSAS   %:");
+		strcpy(COUNTMSG, "DEFECTUOSAS   %:");
 		LCDWriteMsg(LCD_USE_FOURTH_LINE,strcat(COUNTMSG,snum),0);
 	}
 
