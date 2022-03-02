@@ -61,8 +61,9 @@ void PrintMSG_DespLCD(void)
    }
 }
 
-const byte MsgDynamic3[] = "DINOINGENIEROS presenta CUENTA BOTELLAS 3k. Bienvenidos y bienaventurados.";
-void PrintMSG_DespLCD_DINO(void)
+const byte MsgDynamic3[] = "12345678901234567890XXXX";
+
+void PrintMSG_DespLCD_DINO()
 {
    byte lenMsg = (byte) strlen(MsgDynamic3);
    byte i;
@@ -70,6 +71,6 @@ void PrintMSG_DespLCD_DINO(void)
    for (i=0;i<strlen(MsgDynamic3)-LCD_NUM_COLS;i++)
    {
       LCD_CurDispShift(LCD_CURDISPSHIFT_DISPSHIFT, LCD_CURDISPSHIFT_LEFTSHIFT);
-      tDelayLarge(100);
+      tDelayLarge(300);
    }
 }

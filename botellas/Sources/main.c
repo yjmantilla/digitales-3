@@ -44,6 +44,8 @@ char COUNTMSG[50];
 
 char snum[10];
 
+
+
 //VariablEs for counting and indicating TIMER event.
 // Volatile is useful for memory-mapped IO, prevents compiler optimization - avoid caching it, indicates the variable may change by outside factors
 volatile unsigned char Flag_Int_IC=0;//variable for indicating to main program that an Input Capture(IC) has ocurred
@@ -163,8 +165,9 @@ void Port_Init(void)
 	// B1 --> Salida Dejo de contar
 	// B2 --> Salida Alarma defectuoso
 	
-	//D0 --> Entrada Switche Banda/cuenta prendida/apagada
+	//D0 --> Entrada Switche cuenta prendida/apagada 
 	//D1--> modo average o absoluto
+	//D2--> Activacion del motor Banda (activo o detenido)
 	PTDD = 0x00;
 	PTDDD = 0x00;
 	
@@ -193,6 +196,15 @@ char *itoa_simple(char *dest, int i) {
   }
   *itoa_simple_helper(s, i) = '\0';
   return dest;
+}
+
+void presentation(void){
+	  LCD_Clear();
+	  
+	  LCDWriteCenterMsg(LCD_USE_FIRST_LINE, "CONTADOR DE BOTELLAS",0);
+	  LCDWriteCenterMsg(LCD_USE_SECOND_LINE,"SW1: ENC.APA SISTEMA",0);
+	  LCDWriteCenterMsg(LCD_USE_THIRD_LINE, "SW3: ENC.APA MOTOR  ",0);
+	  LCDWriteCenterMsg(LCD_USE_FOURTH_LINE,"SW8: PORCENTAJES    ",0);
 }
 
 void show_count(int i){
@@ -254,68 +266,76 @@ void main(void)
   // ENABLE INTERRUPTS 
   EnableInterrupts; 
   Flag_Int_IC=0;
-  LCDWriteCenterMsg(LCD_USE_FIRST_LINE,"BIENVENIDOS AL",0);
-  LCDWriteCenterMsg(LCD_USE_SECOND_LINE,"CONTADOR DE BOTELLAS",0);
-  LCDWriteCenterMsg(LCD_USE_THIRD_LINE,"DE DINOINGENIEROS",0);
-  LCDWriteCenterMsg(LCD_USE_FOURTH_LINE,"RARRRR!",0);
 
 
   for(;;) 
   {
-	PTFD_PTFD1=!PTDD_PTDD0;
 
 	if (PTDD_PTDD0==1)
 	{	
+		PTFD_PTFD1=0;
 		LCD_Clear();
-		LCDWriteCenterMsg(LCD_USE_SECOND_LINE,"BANDA APAGADA",0);
+		LCDWriteCenterMsg(LCD_USE_SECOND_LINE,"SISTEMA INACTIVO",0);
 	    if (PTDD_PTDD0 == 0)
 	    {
 	    	show_count(!PTDD_PTDD1);
 	    }
 
 	}
-	else{
-		show_count(!PTDD_PTDD1);
-	__asm WAIT;
+	else
+	{
+	PTFD_PTFD1=!PTDD_PTDD2;
+
+	  if (PTDD_PTDD2 == 1)
+	    {
+			presentation();
+		}
+	  else
+		{
+			show_count(!PTDD_PTDD1);
+			__asm WAIT;
     
 
-    if(Flag_Int_IC==1){
-    	Flag_Int_IC=0;//DON'T FORGET TO TURN OFF THE FLAG
-    	
-    	if (flag==0 && PTED_PTED2==0){//FIRST EDGE
-    		count_Ovf=0;
-    		time_edge_1=TPM1C0V;//CAPTURE THE TIME INDICATING A RISING OR FALLING EDGE
-    		flag=1;//SECOND EDGE
-    		PTBD_PTBD0=1;//LEDS
-    		PTBD_PTBD1=0;//LEDS
-			time_pulse_width=0;
-    	}
-    	else if(flag==1 && PTED_PTED2==1){//SECOND EDGE
-    		time_edge_2=TPM1C0V;//CAPTURE THE TIME INDICATING THE OTHERWISE
-    		flag=0;//FISRT EDGE (NEW PULSE)
-    		PTBD_PTBD0=0;//LEDS
-    		PTBD_PTBD1=1;//LEDS
-    		
-    		PTBD_PTBD3=0; // Asumimos que no es defectuosa.
-    		// convert 123 to string [buf]
-    		if (B1_LOW <= count_Ovf && count_Ovf <= B1_HIGH){
-    			B1_COUNT++;
-    			}
-    		else if (B2_LOW <= count_Ovf && count_Ovf <= B2_HIGH){
-    			B2_COUNT++;
-    			}
-    		else if (B3_LOW <= count_Ovf && count_Ovf <= B3_HIGH){
-    			B3_COUNT++;
-    		}
-    		else {
-    			BD_COUNT++;
-        		PTBD_PTBD3=1; // Prendemos señal de alarma.
-    		}
-    		
-    		count_Ovf=0;
-    	}	
+			if(Flag_Int_IC==1)
+			{
+				Flag_Int_IC=0;//DON'T FORGET TO TURN OFF THE FLAG
+				
+				if (flag==0 && PTED_PTED2==0)
+				{	//FIRST EDGE
+					count_Ovf=0;
+					time_edge_1=TPM1C0V;//CAPTURE THE TIME INDICATING A RISING OR FALLING EDGE
+					flag=1;//SECOND EDGE
+					PTBD_PTBD0=1;//LEDS
+					PTBD_PTBD1=0;//LEDS
+					time_pulse_width=0;
+				}
+				else if(flag==1 && PTED_PTED2==1)
+				{	//SECOND EDGE
+					time_edge_2=TPM1C0V;//CAPTURE THE TIME INDICATING THE OTHERWISE
+					flag=0;//FISRT EDGE (NEW PULSE)
+					PTBD_PTBD0=0;//LEDS
+					PTBD_PTBD1=1;//LEDS
+					
+					PTBD_PTBD2=0; // Asumimos que no es defectuosa.
+					// convert 123 to string [buf]
+					if (B1_LOW <= count_Ovf && count_Ovf <= B1_HIGH){
+						B1_COUNT++;
+						}
+					else if (B2_LOW <= count_Ovf && count_Ovf <= B2_HIGH){
+						B2_COUNT++;
+						}
+					else if (B3_LOW <= count_Ovf && count_Ovf <= B3_HIGH){
+						B3_COUNT++;
+					}
+					else {
+						BD_COUNT++;
+						PTBD_PTBD2=1; // Prendemos señal de alarma.
+					}
+					
+					count_Ovf=0;
+				}
+			}
+		}
     }
-    
-	}
   }
 }
