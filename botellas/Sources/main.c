@@ -168,6 +168,7 @@ void Port_Init(void)
 	//D0 --> Entrada Switche cuenta prendida/apagada 
 	//D1--> modo average o absoluto
 	//D2--> Activacion del motor Banda (activo o detenido)
+	//D4--> Resetear conteo
 	PTDD = 0x00;
 	PTDDD = 0x00;
 	
@@ -270,7 +271,14 @@ void main(void)
 
   for(;;) 
   {
-
+	  
+	if (PTDD_PTDD4==0){
+		B1_COUNT=0;
+		B2_COUNT=0;
+		B3_COUNT=0;
+		BD_COUNT=0;
+	}
+	
 	if (PTDD_PTDD0==1)
 	{	
 		PTFD_PTFD1=0;
