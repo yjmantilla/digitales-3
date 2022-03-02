@@ -169,6 +169,7 @@ void Port_Init(void)
 	//D1--> modo average o absoluto
 	//D2--> Activacion del motor Banda (activo o detenido)
 	//D4--> Resetear conteo
+	//D3--> MODO VISUALIZAR GUIA O CONTEO
 	PTDD = 0x00;
 	PTDDD = 0x00;
 	
@@ -202,7 +203,7 @@ char *itoa_simple(char *dest, int i) {
 void presentation(void){
 	  LCD_Clear();
 	  
-	  LCDWriteCenterMsg(LCD_USE_FIRST_LINE, "CONTADOR DE BOTELLAS",0);
+	  LCDWriteCenterMsg(LCD_USE_FIRST_LINE, "SW4: GUIA O CONTEOS",0);
 	  LCDWriteCenterMsg(LCD_USE_SECOND_LINE,"SW1: ENC.APA SISTEMA",0);
 	  LCDWriteCenterMsg(LCD_USE_THIRD_LINE, "SW3: ENC.APA MOTOR  ",0);
 	  LCDWriteCenterMsg(LCD_USE_FOURTH_LINE,"SW8: PORCENTAJES    ",0);
@@ -294,13 +295,14 @@ void main(void)
 	{
 	PTFD_PTFD1=!PTDD_PTDD2;
 
-	  if (PTDD_PTDD2 == 1)
+	  if (PTDD_PTDD3 == 1)
 	    {
 			presentation();
 		}
-	  else
+	  else{show_count(!PTDD_PTDD1);}
+		  
 		{
-			show_count(!PTDD_PTDD1);
+			
 			__asm WAIT;
     
 
