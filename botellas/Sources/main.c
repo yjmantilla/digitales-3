@@ -285,11 +285,6 @@ void main(void)
 		PTFD_PTFD1=0;
 		LCD_Clear();
 		LCDWriteCenterMsg(LCD_USE_SECOND_LINE,"SISTEMA INACTIVO",0);
-	    if (PTDD_PTDD0 == 0)
-	    {
-	    	show_count(!PTDD_PTDD1);
-	    }
-
 	}
 	else
 	{
@@ -339,7 +334,7 @@ void main(void)
 					}
 					else {
 						BD_COUNT++;
-						PTBD_PTBD2=1; // Prendemos señal de alarma.
+						PTBD_PTBD2=1; // Prendemos seÃ±al de alarma.
 					}
 					
 					count_Ovf=0;
