@@ -10,7 +10,7 @@ class TheApp(QMainWindow):
         self.ui.setupUi(self)
 
 if __name__ == '__main__':
-    app = QApplication()
+    app = QApplication(sys.argv)
     window = TheApp()
     window.show()
-    sys.exit(app.exec__())
+    sys.exit(app.exec_())
