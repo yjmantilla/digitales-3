@@ -1,3 +1,6 @@
+"""Based on https://www.youtube.com/watch?v=ppz1e_ceeIw
+    https://github.com/Hikki12/Simple-Serial-PyQt5
+"""
 from re import S
 import sys
 from PyQt5.QtWidgets import QMainWindow,QApplication
