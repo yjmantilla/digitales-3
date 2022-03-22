@@ -1,0 +1,1 @@
+pyuic5 terminal_gui.ui -o terminal_gui.py
