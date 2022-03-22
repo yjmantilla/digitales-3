@@ -1,19 +1,26 @@
-/*
- * Hello World!
- *
- * This is the Hello World! for Arduino. 
- * It shows how to send data to the computer
- */
+const int pinLED = A0;
 
-
-void setup()                    // run once, when the sketch starts
-{
-  Serial.begin(9600);           // set up Serial library at 9600 bps
-  
-  Serial.println("Hello world!");  // prints hello with ending line break 
+void setup() {
+  Serial.begin(9600);
+  pinMode(pinLED, OUTPUT);
 }
 
-void loop()                       // run over and over again
-{
-                                  // do nothing!
+void loop() {
+   if(Serial.available()>0){
+      char dato = Serial.read(); 
+      
+      if(dato == '0'){
+        digitalWrite(pinLED,0);
+        Serial.println("LED: OFF");
+      }
+      
+      if(dato == '1'){
+        digitalWrite(pinLED,1);
+        Serial.println("LED: ON");
+        }
+        
+    }
+  Serial.println("Arduino te dice Hola");
+  delay(1000);
+ 
 }
