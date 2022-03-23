@@ -44,7 +44,7 @@ class OurSerial(QObject):
         self.log("reading...")
         while (self.alive.isSet() and self.serialPort.is_open):
             data = self.serialPort.readline().decode("utf-8").strip()
-            if True: #len(data)>1:
+            if len(data)>1:
                 #self.log(data)
                 self.signal_data_available.emit(data)
     def send_data(self,data):
