@@ -3,21 +3,36 @@
 """
 from re import S
 import sys
-from PyQt5.QtWidgets import QMainWindow,QApplication
+from PyQt5.QtWidgets import QMainWindow,QApplication,QMessageBox,QHeaderView
+from PyQt5.QtCore import pyqtSlot,pyqtSignal
+from PyQt5.QtGui import QStandardItemModel,QStandardItem
+
 from stepper_gui import Ui_MainWindow
 from stepper import StepperMotor
 from our_serial import OurSerial
 
 
 class TheApp(QMainWindow):
+    report_signal = pyqtSignal(object)
     def __init__(self):
         super().__init__() # Heredar atributeos de QMainWindow
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.serial = OurSerial()
         self.stepper = StepperMotor()
+        self.NITEMS = 10
+        self.sequence_keys = ['direction','degrees','pause']
+        self.sequence = {'index':0,'direction':['']*self.NITEMS,'degrees':['']*self.NITEMS,'pause':['']*self.NITEMS}
 
         self.scope = f'{type(self).__name__}'
+
+        # Table Model
+        self.model = QStandardItemModel(4,3)
+        #Establecer el encabezado
+        self.model.setHorizontalHeaderLabels (['Direction','Degrees','Pause'])
+        self.ui.tableView_sequence.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.ui.tableView_sequence.setModel(self.model)
+        self.refresh_table()
 
         # Configuring static comboboxes
         self.ui.comboBox_baudrate.addItems(self.serial.dict_bauds.keys())
@@ -33,9 +48,83 @@ class TheApp(QMainWindow):
         self.ui.pushButton_refresh.clicked.connect(self.refresh)
         self.ui.pushButton_clearAll.clicked.connect(self.clear)
         self.serial.signal_data_available.connect(self.refresh_terminal)
+        self.report_signal.connect(self.on_report_signal)
+        self.ui.pushButton_addMove.clicked.connect(self.add_move)
+        self.ui.pushButton_removeLast.clicked.connect(self.remove_last)
+    def showMessage(self,tuple_args):
+        """
+        Method that emits a message through the ``self.report_signal``
+        This allows to show a message box when a report is finished.
+        tuple_args = (True|False|None,Message True,Message False)
+        If None, no message box is shown.
+        """
+        self.report_signal.emit(tuple_args)
 
+
+    @pyqtSlot(object)
+    def on_report_signal(self,text):
+        """
+        An slot that shows a QMessageBox with the feedback of
+        the report html job asked by the user.
+        tuple_args = (True|False|None,Message True,Message False)
+        If None, no message box is shown.
+        """
+
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Information)
+        msg.setWindowTitle("Notice!")
+
+        msg.setText(text)
+        msg.show()
+    def refresh_table(self):
+        self.ui.tableView_sequence.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        for i in range(self.NITEMS):
+            for j,key in enumerate(self.sequence_keys):
+                print(i,j,self.sequence[key][i])
+                self.model.setItem(i,j,QStandardItem(str(self.sequence[key][i])))
+    def add_move(self):
+        #TODO: Verify the table has less than N items
+        try:
+            degrees = float(self.ui.lineEdit_degrees.text())
+            if not (10 <= degrees and degrees <= 1080):
+                self.showMessage('Degrees have to be between 10 and 1080')
+
+        except:
+            self.showMessage('Couldnt convert degrees to float')
+
+
+        direction = self.ui.comboBox_direction.currentText()
+
+        try:
+            pause = float(self.ui.lineEdit_pause.text())
+            if not (1 <= pause and pause <= 5):
+                self.showMessage('Pause have to be between 1 and 5')
+
+        except:
+            self.showMessage('Couldnt convert pause to float')
+
+        currentMove = {'direction':direction,'degrees':degrees,'pause':pause}
+
+        for key in currentMove.keys():
+            self.sequence[key][self.sequence['index']]=currentMove[key]
+        self.sequence['index'] +=1
+        #TODO: Cycle back to start of the sequence after ten items?
+        #TODO: Ignore empty movements, dont send to micro
+        self.refresh_table()
+        #print(dir(self.ui.tableView_sequence))
+        print(self.sequence)
+
+    def remove_last(self):
+        if self.sequence['index'] > 0:
+            self.sequence['index']-=1
+            for key in self.sequence_keys:
+                self.sequence[key][self.sequence['index']]=''
+            self.refresh_table()
+        else:
+            pass
     def refresh_terminal(self,data):
-        self.ui.textBrowser_sequence.append(data)
+        self.ui.textBrowser_terminal.append(data)
 
     def log(self,msg):
         print(self.scope+'::'+msg)
@@ -62,7 +151,7 @@ class TheApp(QMainWindow):
 
 
     def send_data(self):
-        data = self.ui.textBrowser_sequence.text()
+        data = self.ui.textBrowser_terminal.text()
         self.serial.send_data(data)
     
     def read_data(self):
@@ -74,7 +163,7 @@ class TheApp(QMainWindow):
         self.ui.comboBox_port.addItems(self.serial.list_ports)
 
     def clear(self):
-        self.ui.textBrowser_sequence.clear()
+        self.ui.textBrowser_terminal.clear()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
