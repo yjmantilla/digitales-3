@@ -92,8 +92,9 @@ class TheApp(QMainWindow):
     def add_move(self):
         #TODO: Verify the table has less than N items
         valid_move = True
-        if self.sequence['index']>self.NITEMS:
+        if self.sequence['index']>=self.NITEMS:
             self.showMessage('ERROR: Max limit of movements already reached.')
+            valid_move = False
         try:
             degrees = float(self.ui.lineEdit_degrees.text())
             MAX_DEGREE = 1080
@@ -119,7 +120,7 @@ class TheApp(QMainWindow):
             valid_move = False
         if valid_move == False:
             return
-        currentMove = {'direction':direction,'degrees':degrees,'pause':pause}
+        currentMove = {'direction':direction,'degrees':int(degrees),'pause':int(pause)}
 
         for key in currentMove.keys():
             self.sequence[key][self.sequence['index']]=currentMove[key]
@@ -178,7 +179,8 @@ class TheApp(QMainWindow):
             data = f'{str(direction)},{str(degrees)},{str(pause)};'
             data_string += data
         data_string+='$'
-        #self.serial.send_data(data_string)
+        for char in data_string:
+            self.serial.send_data(char)
         print(data_string)
 
     def read_data(self):

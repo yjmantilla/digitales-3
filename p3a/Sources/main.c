@@ -27,13 +27,29 @@ void SCI_PutMsg(const byte *);
 byte SCI_GetChar(void);
 
 const byte Msg[] = "Bienvenido al curso de ElectrOnica Digital III\n\n\r";
+volatile byte MsgRec[10] = ""; //1+1+4+1+1+1+1
 byte response = 0;
 volatile byte tecla = 0;
 volatile byte flag_rx = 0;
-
+volatile int counter = 0;
+volatile byte flag_movement = 0;
+volatile int echo_counter = 0;
+volatile int flag_salto =0;
 interrupt 23 void READ_ISR(void){//INTERRUPT ENABLE
 	(void) SCI2S1;//If hardware interrupts are used, SCIxS1 must be read in the interrupt service routine (ISR). 
 	tecla = SCI2D;
+	if (tecla == '$'){
+		flag_movement = 1;
+	}
+	else{
+		flag_movement = 0;
+	}
+	if (tecla == '\n'){
+		flag_salto = 1;
+	}
+	else{
+		flag_salto = 0;
+	}
 	flag_rx = 1;
 	//response = SCI_GetChar();
 	//SCI_PutChar(response);
@@ -50,33 +66,23 @@ void main(void) {
 	
 	SCI_PutChar(CR);
 	EnableInterrupts;
-
+	SCI_PutMsg(Msg);
 	for(;;) {
-	
-		SCI_PutMsg("InformaciOn: No. estudiantes, Tipo de curso, Nivel. Digite (n/t/s): ");
 		asm WAIT;
 		if (flag_rx==1){
 		flag_rx = 0;
+		if (flag_salto==0){
+		MsgRec[counter] = tecla;
 		
-		switch(tecla) {
-		  case 'n': 
-			SCI_PutMsg("\n\r\n\rTiene 20 estudiantes!!!n \n\r\n\r");
-			break;
-		  case 't':
-			SCI_PutMsg("\n\r\n\rCurso regular obligatorio!!! \n\r\n\r");
-			break;
-		  case 's':
-			SCI_PutMsg("\n\r\n\rCurso de octavo semestre!!! \n\r\n\r");
-			break;
-          default:
-			SCI_PutMsg("\n\r\n\rPregunta incorrecta.Por favor repita pregunta !!\n\r\n\r");
-			break;
+		if (flag_movement){
+			flag_movement =0;
+		}
+		counter = counter +1;
 		}
 		}
 		
-	}
 }
-	
+}
 void SCI_Init(void) {
   SCI2BDL = 78; // SCI Baud rate = BusClock/16*[SBR12:SBR0] ---> 12Mhz/(16*78) = 9600 bps
   SCI2C2 = (SCI2C2_TE_MASK | SCI2C2_RIE_MASK | SCI2C2_RE_MASK); //Masks defined by mcs908jm60.h
@@ -95,7 +101,7 @@ byte SCI_GetChar(void) {
   return SCI2D;// The RDRF flag is cleared at end of execution. Why?
 }
 
-void SCI_PutMsg(const byte * Data) {
+void SCI_PutMsg(byte * Data) {
   while(*Data != '\0') {
 	SCI_PutChar(*Data++);
   }
