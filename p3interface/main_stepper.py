@@ -6,7 +6,7 @@ import sys
 from PyQt5.QtWidgets import QMainWindow,QApplication,QMessageBox,QHeaderView
 from PyQt5.QtCore import pyqtSlot,pyqtSignal
 from PyQt5.QtGui import QStandardItemModel,QStandardItem
-
+import copy
 from stepper_gui import Ui_MainWindow
 from stepper import StepperMotor
 from our_serial import OurSerial
@@ -22,8 +22,9 @@ class TheApp(QMainWindow):
         self.stepper = StepperMotor()
         self.NITEMS = 10
         self.sequence_keys = ['direction','degrees','pause']
-        self.sequence = {'index':0,'direction':['']*self.NITEMS,'degrees':['']*self.NITEMS,'pause':['']*self.NITEMS}
-
+        # Index apunta a la siguiente posicion de la lista a llenarse
+        self.sequence_init = {'index':0,'direction':['']*self.NITEMS,'degrees':['']*self.NITEMS,'pause':['']*self.NITEMS}
+        self.sequence = copy.deepcopy(self.sequence_init)
         self.scope = f'{type(self).__name__}'
 
         # Table Model
@@ -51,6 +52,11 @@ class TheApp(QMainWindow):
         self.report_signal.connect(self.on_report_signal)
         self.ui.pushButton_addMove.clicked.connect(self.add_move)
         self.ui.pushButton_removeLast.clicked.connect(self.remove_last)
+        self.ui.pushButton_clearAll.clicked.connect(self.clear_all)
+    
+    def clear_all(self):
+        self.sequence = copy.deepcopy(self.sequence_init)
+        self.refresh_table()
     def showMessage(self,tuple_args):
         """
         Method that emits a message through the ``self.report_signal``
@@ -85,25 +91,34 @@ class TheApp(QMainWindow):
                 self.model.setItem(i,j,QStandardItem(str(self.sequence[key][i])))
     def add_move(self):
         #TODO: Verify the table has less than N items
+        valid_move = True
+        if self.sequence['index']>self.NITEMS:
+            self.showMessage('ERROR: Max limit of movements already reached.')
         try:
             degrees = float(self.ui.lineEdit_degrees.text())
-            if not (10 <= degrees and degrees <= 1080):
-                self.showMessage('Degrees have to be between 10 and 1080')
-
+            MAX_DEGREE = 1080
+            MIN_DEGREE = 10
+            if not (MIN_DEGREE <= degrees and degrees <= MAX_DEGREE):
+                self.showMessage(f'Degrees have to be between {MIN_DEGREE} and {MAX_DEGREE}')
+                valid_move = False
         except:
             self.showMessage('Couldnt convert degrees to float')
-
+            valid_move = False
 
         direction = self.ui.comboBox_direction.currentText()
 
         try:
             pause = float(self.ui.lineEdit_pause.text())
-            if not (1 <= pause and pause <= 5):
-                self.showMessage('Pause have to be between 1 and 5')
-
+            MAX_PAUSE = 5
+            MIN_PAUSE = 1
+            if not (MIN_PAUSE <= pause and pause <= MAX_PAUSE):
+                self.showMessage(f'Pause have to be between {MIN_PAUSE} and {MAX_PAUSE}')
+                valid_move = False
         except:
             self.showMessage('Couldnt convert pause to float')
-
+            valid_move = False
+        if valid_move == False:
+            return
         currentMove = {'direction':direction,'degrees':degrees,'pause':pause}
 
         for key in currentMove.keys():
@@ -151,9 +166,21 @@ class TheApp(QMainWindow):
 
 
     def send_data(self):
-        data = self.ui.textBrowser_terminal.text()
-        self.serial.send_data(data)
-    
+        i = 0
+        data_string = ''
+        for i in range(self.NITEMS):
+            direction,degrees,pause=tuple([self.sequence[key][i] for key in self.sequence_keys])
+            if direction == '' or degrees=='' or pause=='':
+                print('skipping empty move')
+                continue
+            direction=self.stepper.dict_directions[direction]
+            # Assume direction,degrees,pause order
+            data = f'{str(direction)},{str(degrees)},{str(pause)};'
+            data_string += data
+        data_string+='$'
+        #self.serial.send_data(data_string)
+        print(data_string)
+
     def read_data(self):
         self.log("reading...")
 
