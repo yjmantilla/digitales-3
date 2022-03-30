@@ -18,7 +18,10 @@
 #include "derivative.h" /* include peripheral declarations */
 
 #define CR   0x0D // Posicion del Carrier Return
-
+//#define BOBINAA PTED_PTED3
+//#define BOBINAB PTED_PTED1
+//#define BOBINAC PTFD_PTFD6
+//#define BOBINAD PTFD_PTFD7
 // Prototipos de funciones
 void MCG_Init(void);
 void SCI_Init(void);
@@ -47,6 +50,18 @@ volatile byte strIndex = 0;
 volatile int currMove = 0;
 volatile int index = 0;
 volatile byte flag_ready=0;
+
+// Bobinas
+volatile byte ins=0, ind=0, ba=0, bb=0, bc=0, bd=0;
+int pasos=0;
+int sentido=0;
+int frec=50;
+int op=0;
+int deg=0;
+int t_paso=1;
+float prec=2*5.625/64; 
+float ftem=0;
+float pause=0;//1000/200;
 
 interrupt 23 void READ_ISR(void){//INTERRUPT ENABLE
 	(void) SCI2S1;//If hardware interrupts are used, SCIxS1 must be read in the interrupt service routine (ISR). 
@@ -85,9 +100,14 @@ void main(void) {
    	SOPT1 = 0x20;
 	MCG_Init(); // Configurar Relog
 	SCI_Init(); // Configurar Serial Communication
-	
 	PTBDD_PTBDD7 = 1;
 	PTBD_PTBD7 = 0;
+	// Salida logica motor
+	PTFD=0x00;
+	PTFDD=0xFF;	
+	// Salida logica motor
+	PTED=0x00;
+	PTEDD=0xFF;
 	
 	SCI_PutChar(CR);
 	EnableInterrupts;
@@ -148,6 +168,7 @@ void main(void) {
 			}
 			if (currChar=='$'){
 				flag_ready=1;
+				pasos=(int) deg/prec;
 			}
 			
 		}
@@ -198,3 +219,82 @@ void MCG_Init(void) {
 	while(MCGSC_CLKST != 0b11){};	
 }
 
+
+void mediopaso(int n){
+  int i=0;
+  ba=1; bb=0; bc=0; bd=0;
+  for(i=1;i<=n;i++){
+    if(sentido==0){
+      if((ba==1 && bd==0) && bb==0){
+         PTFD_PTFD7=0;       
+         PTED_PTED3=1;
+         ////delay(pause);
+         bb=1;
+      }else if(ba==1 && bb==1){
+        PTED_PTED1=1;
+        ////delay(pause);
+        ba=0;
+      }else if(bb==1 && bc==0){
+         PTED_PTED3=0;
+         ////delay(pause);
+         bc=1;
+      }else if(bb==1 && bc==1){
+         PTFD_PTFD6=1;
+         ////delay(pause);
+         bb=0;
+      }else if(bc==1 && bd==0){
+        PTED_PTED1=0;
+        ////delay(pause);
+        bd=1;
+      }else if(bc==1 && bd==1){
+        PTFD_PTFD7=1;
+        ////delay(pause);
+        bc=0;
+      }else if(bd==1 && ba==0){
+        PTFD_PTFD6=0;
+        ////delay(pause);
+        ba=1;
+      }else if(bd==1 && ba==1){
+         PTED_PTED3=1;
+         //delay(pause);
+         bd=0;
+      }
+    }else{
+      if(ba==1 && bd==0 && bb==0){
+         PTFD_PTFD7=0;
+         PTED_PTED1=0;       
+         PTED_PTED3=1;
+         //delay(pause);
+         bd=1;
+      }else if(ba==1 && bb==1){
+        PTED_PTED3=1;
+        //delay(pause);
+        bb=0;
+      }else if(bb==1 && bc==0){
+         PTFD_PTFD6=0;
+         //delay(pause);
+         ba=1;
+      }else if(bb==1 && bc==1){
+         PTED_PTED1=1;
+         //delay(pause);
+         bc=0;
+      }else if(bc==1 && bd==0){
+        PTFD_PTFD7=0;
+        //delay(pause);
+        bb=1;
+      }else if(bc==1 && bd==1){
+        PTFD_PTFD6=1;
+        //delay(pause);
+        bd=0;
+      }else if(bd==1 && ba==0){
+        PTED_PTED3=0;
+        //delay(pause);
+        bc=1;
+      }else if(bd==1 && ba==1){
+         PTFD_PTFD7=1;
+         //delay(pause);
+         ba=0;
+      }
+    }    
+  }
+}
