@@ -168,7 +168,7 @@ void main(void) {
 			}
 			if (currChar=='$'){
 				flag_ready=1;
-				pasos=(int) deg/prec;
+				pasos=(int) deg/prec; // reconfigurar el codewarrior para usar puntoflotante
 			}
 			
 		}
