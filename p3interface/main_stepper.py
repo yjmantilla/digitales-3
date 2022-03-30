@@ -176,7 +176,7 @@ class TheApp(QMainWindow):
                 continue
             direction=self.stepper.dict_directions[direction]
             # Assume direction,degrees,pause order
-            data = f'{str(direction)},{str(degrees)},{str(pause)};'
+            data = f'{str(direction)},{str(degrees)},{str(pause)},;'
             data_string += data
         data_string+='$'
         for char in data_string:

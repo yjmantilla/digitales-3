@@ -27,7 +27,7 @@ void SCI_PutMsg(const byte *);
 byte SCI_GetChar(void);
 
 const byte Msg[] = "Bienvenido al curso de ElectrOnica Digital III\n\n\r";
-volatile byte MsgRec[10] = ""; //1+1+4+1+1+1+1
+volatile byte MsgRec[91] = ""; //([1]+,+[4]+,+[1]+;)*10 + $
 byte response = 0;
 volatile byte tecla = 0;
 volatile byte flag_rx = 0;
@@ -35,26 +35,51 @@ volatile int counter = 0;
 volatile byte flag_movement = 0;
 volatile int echo_counter = 0;
 volatile int flag_salto =0;
+volatile int flag_end =0;
+volatile int directions[10]={-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+volatile int degrees[10]={-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+volatile int pauses[10]={-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+volatile int which_part = 0;
+volatile byte currChar=0;
+volatile byte currStr[4]="****";
+volatile int currVal = 0;
+volatile byte strIndex = 0;
+volatile int currMove = 0;
+volatile int index = 0;
+volatile byte flag_ready=0;
+
 interrupt 23 void READ_ISR(void){//INTERRUPT ENABLE
 	(void) SCI2S1;//If hardware interrupts are used, SCIxS1 must be read in the interrupt service routine (ISR). 
 	tecla = SCI2D;
-	if (tecla == '$'){
-		flag_movement = 1;
+	flag_end = 0;
+	flag_movement = 0;
+	flag_salto=0;
+	if (tecla=='$'){
+		flag_end = 1;
 	}
-	else{
-		flag_movement = 0;
+	if (tecla == ';'){
+		flag_movement = 1;
+		
 	}
 	if (tecla == '\n'){
 		flag_salto = 1;
-	}
-	else{
-		flag_salto = 0;
 	}
 	flag_rx = 1;
 	//response = SCI_GetChar();
 	//SCI_PutChar(response);
 
 }
+
+int atoi(volatile char* str){
+    int num = 0;
+    int i = 0;
+    while (str[i] && (str[i] >= '0' && str[i] <= '9')){
+        num = num * 10 + (str[i] - '0');
+        i++;
+    }
+    return num;
+}
+
 
 void main(void) {
    	SOPT1 = 0x20;
@@ -74,8 +99,57 @@ void main(void) {
 		if (flag_salto==0){
 		MsgRec[counter] = tecla;
 		
-		if (flag_movement){
-			flag_movement =0;
+		if (flag_end){
+			counter =0; //For new set of movements?
+			flag_end =0;
+			index = 0;
+			currChar = MsgRec[index];
+			currMove=0;
+			while(currChar!='$')
+			{
+				if (currChar >= '0' && currChar <= '9')
+				{
+					currStr[strIndex]=currChar;
+					strIndex+=1;
+				}
+				else if (currChar == ',')
+				{
+					currStr[strIndex]='\0';
+					strIndex=0;
+					currVal = atoi(currStr);
+					
+					switch (which_part)
+					{
+					case 0:
+						directions[currMove] = currVal;
+						break;
+					case 1:
+						degrees[currMove] = currVal;
+						break;
+					case 2:
+						pauses[currMove] = currVal;
+						break;
+					default:
+						break;
+					}
+					
+					which_part+=1;
+					currStr[1] = '*';
+					
+				}
+				else if (currChar==';'){
+					which_part=0;
+					currMove +=1;
+				}
+				index+=1;
+				currChar = MsgRec[index];
+				
+				
+			}
+			if (currChar=='$'){
+				flag_ready=1;
+			}
+			
 		}
 		counter = counter +1;
 		}
@@ -123,3 +197,4 @@ void MCG_Init(void) {
 	MCGC1_CLKS = 0b00;
 	while(MCGSC_CLKST != 0b11){};	
 }
+
