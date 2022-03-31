@@ -91,25 +91,6 @@ interrupt 23 void READ_ISR(void){//INTERRUPT ENABLE
 
 }
 
-static char *itoa_simple_helper(char *dest, int i) {
-  if (i <= -10) {
-    dest = itoa_simple_helper(dest, i/10);
-  }
-  *dest++ = '0' - i%10;
-  return dest;
-}
-
-char *itoa_simple(char *dest, int i) {
-  char *s = dest;
-  if (i < 0) {
-    *s++ = '-';
-  } else {
-    i = -i;
-  }
-  *itoa_simple_helper(s, i) = '\0';
-  return dest;
-}
-
 void delay(int milli_seconds)
 {
 	int j=0;
@@ -302,19 +283,18 @@ void main(void) {
 					if (pause2 ==-1 || sentido==-1 || deg==-1){
 						continue;
 					}
-					pasos=deg*5+deg/2+deg/10+deg/11; // reconfigurar el codewarrior para usar puntoflotante
+					pasos=deg*5+deg/2+deg/10+deg/11; // this approximate multiplication by 64/(2*5.625)
 					
 					
-					pause = 2000;//pauses[a];
+					pause = 2000;//this is the pause betweens steps, not between movements
 					mediopaso(2*pasos);
-					//waitFor(pause2);
 					waitFor(pause2);
 					//CLEAN
 					directions[a]=-1;
 					pauses[a]=-1;
 					degrees[a]=-1;
 					SCI_PutMsg("MOVE ");
-					SCI_PutChar('0'+a+1);
+					SCI_PutChar('0'+a); // luckily , only 10 movements (0 to 9)--> only 1 char needed
 				}
 				
 				SCI_PutMsg("\nEND");
