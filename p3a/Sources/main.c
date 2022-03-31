@@ -16,6 +16,7 @@
 
 #include <hidef.h> /* for EnableInterrupts macro */
 #include "derivative.h" /* include peripheral declarations */
+#include <time.h>
 
 #define CR   0x0D // Posicion del Carrier Return
 //#define BOBINAA PTED_PTED3
@@ -50,6 +51,7 @@ volatile byte strIndex = 0;
 volatile int currMove = 0;
 volatile int index = 0;
 volatile byte flag_ready=0;
+volatile int odd=0;
 
 // Bobinas
 volatile byte ins=0, ind=0, ba=0, bb=0, bc=0, bd=0;
@@ -59,10 +61,11 @@ int frec=50;
 int op=0;
 int deg=0;
 int t_paso=1;
-float prec=2*5.625/64; 
+float prec=64/(2*5.625); 
 float ftem=0;
-float pause=0;//1000/200;
-
+unsigned long pause=0;//1000/200;
+int a =0;
+unsigned long mod = 0;
 interrupt 23 void READ_ISR(void){//INTERRUPT ENABLE
 	(void) SCI2S1;//If hardware interrupts are used, SCIxS1 must be read in the interrupt service routine (ISR). 
 	tecla = SCI2D;
@@ -85,6 +88,21 @@ interrupt 23 void READ_ISR(void){//INTERRUPT ENABLE
 
 }
 
+void delay(int milli_seconds)
+{
+	int j=0;
+	for (j=0;j<milli_seconds;j=j+1){
+		1+1;
+	}
+    // Converting time into milli_seconds  
+    // Storing start time
+//    clock_t start_time = clock();
+  
+    // looping till required time is not achieved
+//    while (clock() < start_time + milli_seconds)
+//        ;
+}
+
 int atoi(volatile char* str){
     int num = 0;
     int i = 0;
@@ -95,6 +113,84 @@ int atoi(volatile char* str){
     return num;
 }
 
+void mediopaso(int n){
+  int i=0;
+  ba=1; bb=0; bc=0; bd=0;
+  for(i=1;i<=n;i++){
+    if(sentido==0){
+      if((ba==1 && bd==0) && bb==0){
+         PTFD_PTFD7=0;       
+         PTED_PTED3=1;
+         delay(pause);
+         bb=1;
+      }else if(ba==1 && bb==1){
+        PTED_PTED1=1;
+        delay(pause);
+        ba=0;
+      }else if(bb==1 && bc==0){
+         PTED_PTED3=0;
+         delay(pause);
+         bc=1;
+      }else if(bb==1 && bc==1){
+         PTFD_PTFD6=1;
+         delay(pause);
+         bb=0;
+      }else if(bc==1 && bd==0){
+        PTED_PTED1=0;
+        delay(pause);
+        bd=1;
+      }else if(bc==1 && bd==1){
+        PTFD_PTFD7=1;
+        delay(pause);
+        bc=0;
+      }else if(bd==1 && ba==0){
+        PTFD_PTFD6=0;
+        delay(pause);
+        ba=1;
+      }else if(bd==1 && ba==1){
+         PTED_PTED3=1;
+         delay(pause);
+         bd=0;
+      }
+    }else{
+      if(ba==1 && bd==0 && bb==0){
+         PTFD_PTFD7=0;
+         PTED_PTED1=0;       
+         PTED_PTED3=1;
+         delay(pause);
+         bd=1;
+      }else if(ba==1 && bb==1){
+        PTED_PTED3=1;
+        delay(pause);
+        bb=0;
+      }else if(bb==1 && bc==0){
+         PTFD_PTFD6=0;
+         delay(pause);
+         ba=1;
+      }else if(bb==1 && bc==1){
+         PTED_PTED1=1;
+         delay(pause);
+         bc=0;
+      }else if(bc==1 && bd==0){
+        PTFD_PTFD7=0;
+        delay(pause);
+        bb=1;
+      }else if(bc==1 && bd==1){
+        PTFD_PTFD6=1;
+        delay(pause);
+        bd=0;
+      }else if(bd==1 && ba==0){
+        PTED_PTED3=0;
+        delay(pause);
+        bc=1;
+      }else if(bd==1 && ba==1){
+         PTFD_PTFD7=1;
+         delay(pause);
+         ba=0;
+      }
+    }    
+  }
+}
 
 void main(void) {
    	SOPT1 = 0x20;
@@ -168,7 +264,14 @@ void main(void) {
 			}
 			if (currChar=='$'){
 				flag_ready=1;
-				pasos=(int) deg/prec; // reconfigurar el codewarrior para usar puntoflotante
+				a = 0;
+
+				for(a = 0; a < 10; a = a + 1){
+					pasos=(int) degrees[a]*6; // reconfigurar el codewarrior para usar puntoflotante
+					sentido = directions[a];
+					pause = 2000;//pauses[a];
+					mediopaso(2*pasos);
+				}
 			}
 			
 		}
@@ -220,81 +323,3 @@ void MCG_Init(void) {
 }
 
 
-void mediopaso(int n){
-  int i=0;
-  ba=1; bb=0; bc=0; bd=0;
-  for(i=1;i<=n;i++){
-    if(sentido==0){
-      if((ba==1 && bd==0) && bb==0){
-         PTFD_PTFD7=0;       
-         PTED_PTED3=1;
-         ////delay(pause);
-         bb=1;
-      }else if(ba==1 && bb==1){
-        PTED_PTED1=1;
-        ////delay(pause);
-        ba=0;
-      }else if(bb==1 && bc==0){
-         PTED_PTED3=0;
-         ////delay(pause);
-         bc=1;
-      }else if(bb==1 && bc==1){
-         PTFD_PTFD6=1;
-         ////delay(pause);
-         bb=0;
-      }else if(bc==1 && bd==0){
-        PTED_PTED1=0;
-        ////delay(pause);
-        bd=1;
-      }else if(bc==1 && bd==1){
-        PTFD_PTFD7=1;
-        ////delay(pause);
-        bc=0;
-      }else if(bd==1 && ba==0){
-        PTFD_PTFD6=0;
-        ////delay(pause);
-        ba=1;
-      }else if(bd==1 && ba==1){
-         PTED_PTED3=1;
-         //delay(pause);
-         bd=0;
-      }
-    }else{
-      if(ba==1 && bd==0 && bb==0){
-         PTFD_PTFD7=0;
-         PTED_PTED1=0;       
-         PTED_PTED3=1;
-         //delay(pause);
-         bd=1;
-      }else if(ba==1 && bb==1){
-        PTED_PTED3=1;
-        //delay(pause);
-        bb=0;
-      }else if(bb==1 && bc==0){
-         PTFD_PTFD6=0;
-         //delay(pause);
-         ba=1;
-      }else if(bb==1 && bc==1){
-         PTED_PTED1=1;
-         //delay(pause);
-         bc=0;
-      }else if(bc==1 && bd==0){
-        PTFD_PTFD7=0;
-        //delay(pause);
-        bb=1;
-      }else if(bc==1 && bd==1){
-        PTFD_PTFD6=1;
-        //delay(pause);
-        bd=0;
-      }else if(bd==1 && ba==0){
-        PTED_PTED3=0;
-        //delay(pause);
-        bc=1;
-      }else if(bd==1 && ba==1){
-         PTFD_PTFD7=1;
-         //delay(pause);
-         ba=0;
-      }
-    }    
-  }
-}

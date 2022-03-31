@@ -10,7 +10,7 @@
 #define BOBINAB 3   //Conecte a este pin (3) DIGITAL del Arduino el cable correspondiente a la bobina B
 #define BOBINAC 4   //Conecte a este pin (4) DIGITAL del Arduino el cable correspondiente a la bobina C
 #define BOBINAD 5   //Conecte a este pin (5) DIGITAL del Arduino el cable correspondiente a la bobina D
-#define VCC 8
+#define VCC 5
 
 bool ins=0, ind=0, ba=0, bb=0, bc=0, bd=0;
 int pasos=0, sentido=0, frec=50, op=0, tem=0, t_paso=1;
