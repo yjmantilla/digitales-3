@@ -17,6 +17,8 @@
 #include <hidef.h> /* for EnableInterrupts macro */
 #include "derivative.h" /* include peripheral declarations */
 #include <time.h>
+#include <string.h>
+#define SEC_MUL 50 //change this to adjust the timeframe of a "second"
 
 #define CR   0x0D // Posicion del Carrier Return
 //#define BOBINAA PTED_PTED3
@@ -30,8 +32,8 @@ void SCI_PutChar(byte);
 void SCI_PutMsg(const byte *);
 byte SCI_GetChar(void);
 
-const byte Msg[] = "Bienvenido al curso de ElectrOnica Digital III\n\n\r";
-volatile byte MsgRec[91] = ""; //([1]+,+[4]+,+[1]+;)*10 + $
+const byte Msg[] = "Stepper";
+volatile byte MsgRec[101] = ""; //([1],[4],[1],;)*10 + $
 byte response = 0;
 volatile byte tecla = 0;
 volatile byte flag_rx = 0;
@@ -52,6 +54,7 @@ volatile int currMove = 0;
 volatile int index = 0;
 volatile byte flag_ready=0;
 volatile int odd=0;
+char snum;
 
 // Bobinas
 volatile byte ins=0, ind=0, ba=0, bb=0, bc=0, bd=0;
@@ -65,7 +68,7 @@ float prec=64/(2*5.625);
 float ftem=0;
 unsigned long pause=0;//1000/200;
 int a =0;
-unsigned long mod = 0;
+unsigned long pause2 = 0;
 interrupt 23 void READ_ISR(void){//INTERRUPT ENABLE
 	(void) SCI2S1;//If hardware interrupts are used, SCIxS1 must be read in the interrupt service routine (ISR). 
 	tecla = SCI2D;
@@ -88,19 +91,39 @@ interrupt 23 void READ_ISR(void){//INTERRUPT ENABLE
 
 }
 
+static char *itoa_simple_helper(char *dest, int i) {
+  if (i <= -10) {
+    dest = itoa_simple_helper(dest, i/10);
+  }
+  *dest++ = '0' - i%10;
+  return dest;
+}
+
+char *itoa_simple(char *dest, int i) {
+  char *s = dest;
+  if (i < 0) {
+    *s++ = '-';
+  } else {
+    i = -i;
+  }
+  *itoa_simple_helper(s, i) = '\0';
+  return dest;
+}
+
 void delay(int milli_seconds)
 {
 	int j=0;
 	for (j=0;j<milli_seconds;j=j+1){
 		1+1;
 	}
-    // Converting time into milli_seconds  
-    // Storing start time
-//    clock_t start_time = clock();
-  
-    // looping till required time is not achieved
-//    while (clock() < start_time + milli_seconds)
-//        ;
+}
+
+void waitFor(int number_of_seconds)
+{
+	int j=0;
+	for (j=0;j<SEC_MUL*number_of_seconds;j=j+1){
+		delay(12000000);
+	}
 }
 
 int atoi(volatile char* str){
@@ -264,14 +287,41 @@ void main(void) {
 			}
 			if (currChar=='$'){
 				flag_ready=1;
+				
+				//Clean Memory String
+				a=0;
+				for(a = 0; a < 101; a = a + 1){
+					MsgRec[a]='\0';
+				}
 				a = 0;
-
+				SCI_PutMsg("\nStarting Moves");
 				for(a = 0; a < 10; a = a + 1){
-					pasos=(int) degrees[a]*6; // reconfigurar el codewarrior para usar puntoflotante
+					deg = degrees[a];
 					sentido = directions[a];
+					pause2 = pauses[a];
+					if (pause2 ==-1 || sentido==-1 || deg==-1){
+						continue;
+					}
+					pasos=deg*5+deg/2+deg/10+deg/11; // reconfigurar el codewarrior para usar puntoflotante
+					
+					
 					pause = 2000;//pauses[a];
 					mediopaso(2*pasos);
+					//waitFor(pause2);
+					waitFor(pause2);
+					//CLEAN
+					directions[a]=-1;
+					pauses[a]=-1;
+					degrees[a]=-1;
+					SCI_PutMsg("MOVE ");
+					SCI_PutChar('0'+a+1);
 				}
+				
+				SCI_PutMsg("\nEND");
+				
+
+				
+				
 			}
 			
 		}

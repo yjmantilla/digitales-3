@@ -48,6 +48,7 @@ class TheApp(QMainWindow):
         self.ui.pushButton_send.clicked.connect(self.send_data)
         self.ui.pushButton_refresh.clicked.connect(self.refresh)
         self.ui.pushButton_clearAll.clicked.connect(self.clear)
+        self.ui.pushButton_clearMonitor.clicked.connect(self.clear)
         self.serial.signal_data_available.connect(self.refresh_terminal)
         self.report_signal.connect(self.on_report_signal)
         self.ui.pushButton_addMove.clicked.connect(self.add_move)
@@ -57,6 +58,7 @@ class TheApp(QMainWindow):
     def clear_all(self):
         self.sequence = copy.deepcopy(self.sequence_init)
         self.refresh_table()
+
     def showMessage(self,tuple_args):
         """
         Method that emits a message through the ``self.report_signal``
