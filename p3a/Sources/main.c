@@ -283,7 +283,7 @@ void main(void) {
 					if (pause2 ==-1 || sentido==-1 || deg==-1){
 						continue;
 					}
-					pasos=deg*5+deg/2+deg/10+deg/11; // this approximate multiplication by 64/(2*5.625)
+					pasos=deg*5+deg/2+deg/8; // this approximate multiplication by 64/(2*5.625)
 					
 					
 					pause = 2000;//this is the pause betweens steps, not between movements
@@ -293,7 +293,7 @@ void main(void) {
 					directions[a]=-1;
 					pauses[a]=-1;
 					degrees[a]=-1;
-					SCI_PutMsg("MOVE ");
+					SCI_PutMsg("\nMOVE ");
 					SCI_PutChar('0'+a); // luckily , only 10 movements (0 to 9)--> only 1 char needed
 				}
 				
